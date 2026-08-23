@@ -1,0 +1,18 @@
+{
+  "Name": "Market Town",
+  "Author": "d5a1lamdtd",
+  "Version": "7.0.0",
+  "Description": "Market Town",
+  "UniqueID": "d5a1lamdtd.MarketTown",
+  "EntryDll": "MarketTown.dll",
+  "MinimumApiVersion": "4.0.0",
+  "UpdateKeys": [
+    "Nexus:19309"
+  ],
+  "Dependencies": [
+    {
+      "UniqueID": "Pathoschild.ContentPatcher",
+      "IsRequired": true
+    }
+  ]
+}

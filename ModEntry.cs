@@ -1,6 +1,8 @@
 using System;
 using StardewModdingAPI;
 using StardewModdingAPI.Events;
+using MarketTown.Framework.Config;
+using MarketTown.Framework.Services;
 
 namespace MarketTown
 {
@@ -9,6 +11,8 @@ namespace MarketTown
     {
         /// <summary>The mod configuration from the player.</summary>
         public ModConfig Config { get; private set; }
+
+        private NpcScannerService _npcScannerService;
 
         /// <summary>The mod entry point, called after the mod is first loaded.</summary>
         /// <param name="helper">Provides simplified APIs for writing mods.</param>
@@ -24,7 +28,12 @@ namespace MarketTown
         private void OnGameLaunched(object sender, GameLaunchedEventArgs e)
         {
             this.Monitor.Log("Market Town initialized successfully.", LogLevel.Info);
-            // Setup logic goes here (e.g. hooking up Generic Mod Config Menu)
+
+            // Initialize services
+            _npcScannerService = new NpcScannerService(this.Monitor, this.Config, this.Helper);
+
+            // Register GMCM
+            ModConfigMenu.Register(this.Helper, this.ModManifest, this.Config);
         }
     }
 }

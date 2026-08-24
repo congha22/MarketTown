@@ -36,7 +36,7 @@ namespace MarketTown.Framework.Services
         private class BrowsingTarget
         {
             public string NpcName { get; set; }
-            public Furniture Table { get; set; }
+            public StardewValley.Object TargetObject { get; set; }
             public Microsoft.Xna.Framework.Point StandTile { get; set; }
             public int FacingDirection { get; set; }
             public int ScheduledTime { get; set; }
@@ -152,12 +152,21 @@ namespace MarketTown.Framework.Services
                     target.HasReacted = true;
                     npc.faceDirection(target.FacingDirection);
 
-                    var item = target.Table?.heldObject?.Value;
+                    Item evaluatedItem = null;
+                    if (target.TargetObject is Furniture furniture && furniture.heldObject.Value != null)
+                    {
+                        evaluatedItem = furniture.heldObject.Value;
+                    }
+                    else if (target.TargetObject is Mannequin mannequin)
+                    {
+                        evaluatedItem = mannequin.hat.Value ?? mannequin.shirt.Value ?? mannequin.pants.Value ?? mannequin.boots.Value as Item;
+                    }
+
                     int reactionEmote;
 
-                    if (item != null)
+                    if (evaluatedItem != null)
                     {
-                        int taste = npc.getGiftTasteForThisItem(item);
+                        int taste = npc.getGiftTasteForThisItem(evaluatedItem);
                         reactionEmote = taste switch
                         {
                             NPC.gift_taste_love => 20,       // Heart ❤️ (Loved)
@@ -172,13 +181,13 @@ namespace MarketTown.Framework.Services
                         if (taste == NPC.gift_taste_hate && Game1.random.NextDouble() < 0.5) reactionEmote = 36; // X mark
                         if (taste == NPC.gift_taste_neutral && Game1.random.NextDouble() < 0.5) reactionEmote = 32; // Happy
 
-                        _monitor.Log($"{npc.Name} evaluated '{item.DisplayName}' (Taste: {taste}) -> reacted with emote {reactionEmote}.", LogLevel.Debug);
+                        _monitor.Log($"{npc.Name} evaluated '{evaluatedItem.DisplayName}' (Taste: {taste}) -> reacted with emote {reactionEmote}.", LogLevel.Debug);
                     }
                     else
                     {
-                        // Table is empty
+                        // Target is empty
                         reactionEmote = 40; // Question ❓
-                        _monitor.Log($"{npc.Name} checked table (empty) -> reacted with emote {reactionEmote}.", LogLevel.Debug);
+                        _monitor.Log($"{npc.Name} checked target (empty) -> reacted with emote {reactionEmote}.", LogLevel.Debug);
                     }
 
                     npc.doEmote(reactionEmote);
@@ -211,8 +220,10 @@ namespace MarketTown.Framework.Services
                 return;
             }
 
-            // Scan for all valid tables with items within range
-            var validTables = new List<Furniture>();
+            // Scan for all valid targets (tables with items, mannequins with clothes) within range
+            var validTargets = new List<StardewValley.Object>();
+            
+            // Check furniture (Tables)
             foreach (var furniture in npc.currentLocation.furniture)
             {
                 if (furniture.furniture_type.Value == Furniture.table && furniture.heldObject.Value != null)
@@ -222,74 +233,109 @@ namespace MarketTown.Framework.Services
                         float distance = Utility.distance(npc.TilePoint.X, furniture.TileLocation.X, npc.TilePoint.Y, furniture.TileLocation.Y);
                         if (distance <= _config.NpcScanRange)
                         {
-                            validTables.Add(furniture);
+                            validTargets.Add(furniture);
                         }
                     }
                 }
             }
 
-            if (validTables.Count > 0)
+            // Check objects (Mannequins)
+            foreach (var obj in npc.currentLocation.Objects.Values)
+            {
+                if (obj is Mannequin mannequin)
+                {
+                    if (mannequin.hat.Value != null || mannequin.shirt.Value != null || mannequin.pants.Value != null || mannequin.boots.Value != null)
+                    {
+                        float distance = Utility.distance(npc.TilePoint.X, obj.TileLocation.X, npc.TilePoint.Y, obj.TileLocation.Y);
+                        if (distance <= _config.NpcScanRange)
+                        {
+                            validTargets.Add(obj);
+                        }
+                    }
+                }
+            }
+
+            if (validTargets.Count > 0)
             {
                 // Apply chance roll
                 if (Game1.random.NextDouble() <= _config.NpcScanChance)
                 {
-                    // Pick a random valid table from the list
-                    Furniture selectedTable = validTables[Game1.random.Next(validTables.Count)];
+                    // Pick a random valid target from the list
+                    var selectedTarget = validTargets[Game1.random.Next(validTargets.Count)];
 
-                    _monitor.Log($"{npc.Name} spotted '{selectedTable.heldObject.Value.Name}' on a table at {selectedTable.TileLocation} — searching nearby tables to browse.", LogLevel.Debug);
+                    string targetName = selectedTarget is Mannequin ? "Mannequin" : ((Furniture)selectedTarget).heldObject.Value.Name;
+                    _monitor.Log($"{npc.Name} spotted '{targetName}' at {selectedTarget.TileLocation} — searching nearby targets to browse.", LogLevel.Debug);
 
                     // Apply cooldown before pathing (prevents double-assignment)
                     _npcScanCooldowns[npc.Name] = currentTotalMinutes + _config.NpcScanCooldownMinutes;
 
-                    // Send the NPC toward the selected table and any nearby browse tables
-                    SendNpcToTable(npc, selectedTable);
+                    // Send the NPC toward the selected target and any nearby browse targets
+                    SendNpcToBrowse(npc, selectedTarget);
                 }
             }
         }
 
         /// <summary>
-        /// Finds the initial table and 0 to 2 nearby tables, and injects sequential schedule stops.
+        /// Finds the initial target and 0 to 2 nearby targets, and injects sequential schedule stops.
         /// </summary>
-        private void SendNpcToTable(NPC npc, StardewValley.Objects.Furniture initialTable)
+        private void SendNpcToBrowse(NPC npc, StardewValley.Object initialTarget)
         {
-            // Find other tables holding valid items within browse range of the initial table
-            var nearbyTables = new List<Furniture>();
+            // Find other valid targets within browse range of the initial target
+            var nearbyTargets = new List<StardewValley.Object>();
+            
+            // Tables
             foreach (var f in npc.currentLocation.furniture)
             {
-                if (f != null && f != initialTable && f.furniture_type.Value == Furniture.table && f.heldObject.Value != null)
+                if (f != null && f != initialTarget && f.furniture_type.Value == Furniture.table && f.heldObject.Value != null)
                 {
                     if (_validItemCategories.Contains(f.heldObject.Value.Category))
                     {
-                        float dist = Microsoft.Xna.Framework.Vector2.Distance(f.TileLocation, initialTable.TileLocation);
+                        float dist = Microsoft.Xna.Framework.Vector2.Distance(f.TileLocation, initialTarget.TileLocation);
                         if (dist <= _config.NpcBrowseRange)
                         {
-                            nearbyTables.Add(f);
+                            nearbyTargets.Add(f);
+                        }
+                    }
+                }
+            }
+            
+            // Mannequins
+            foreach (var obj in npc.currentLocation.Objects.Values)
+            {
+                if (obj is Mannequin mannequin && obj != initialTarget)
+                {
+                    if (mannequin.hat.Value != null || mannequin.shirt.Value != null || mannequin.pants.Value != null || mannequin.boots.Value != null)
+                    {
+                        float dist = Microsoft.Xna.Framework.Vector2.Distance(obj.TileLocation, initialTarget.TileLocation);
+                        if (dist <= _config.NpcBrowseRange)
+                        {
+                            nearbyTargets.Add(obj);
                         }
                     }
                 }
             }
 
-            // Randomly choose 0 up to MaxExtraBrowseTables (default: 2) additional tables
-            int maxExtra = Math.Min(_config.MaxExtraBrowseTables, nearbyTables.Count);
+            // Randomly choose 0 up to MaxExtraBrowseTables (default: 2) additional targets
+            int maxExtra = Math.Min(_config.MaxExtraBrowseTables, nearbyTargets.Count);
             int countExtra = maxExtra > 0 ? Game1.random.Next(0, maxExtra + 1) : 0;
 
-            var selectedTables = new List<Furniture> { initialTable };
+            var selectedTargets = new List<StardewValley.Object> { initialTarget };
             if (countExtra > 0)
             {
-                var extra = nearbyTables.OrderBy(_ => Game1.random.Next()).Take(countExtra);
-                selectedTables.AddRange(extra);
+                var extra = nearbyTargets.OrderBy(_ => Game1.random.Next()).Take(countExtra);
+                selectedTargets.AddRange(extra);
             }
 
-            // Build schedule stops for each selected table (+10 minutes apart)
-            var stops = new List<(Furniture table, string locationName, Microsoft.Xna.Framework.Vector2 standTile, int facing, int scheduledTime)>();
+            // Build schedule stops for each selected target (+10 minutes apart)
+            var stops = new List<(StardewValley.Object target, string locationName, Microsoft.Xna.Framework.Vector2 standTile, int facing, int scheduledTime)>();
             int currentTime = NpcScheduleHelper.ConvertToHour(Game1.timeOfDay + 10);
 
-            foreach (var table in selectedTables)
+            foreach (var target in selectedTargets)
             {
-                var standTile = NpcScheduleHelper.GetAdjacentWalkableTile(npc.currentLocation, table.TileLocation, out int facing);
+                var standTile = NpcScheduleHelper.GetAdjacentWalkableTile(npc.currentLocation, target.TileLocation, out int facing);
                 if (standTile != Microsoft.Xna.Framework.Vector2.Zero)
                 {
-                    stops.Add((table, npc.currentLocation.NameOrUniqueName, standTile, facing, currentTime));
+                    stops.Add((target, npc.currentLocation.NameOrUniqueName, standTile, facing, currentTime));
                     currentTime = NpcScheduleHelper.ConvertToHour(currentTime + 10);
                 }
             }
@@ -316,7 +362,7 @@ namespace MarketTown.Framework.Services
                     _activeBrowsingTargets.Add(new BrowsingTarget
                     {
                         NpcName = npc.Name,
-                        Table = stop.table,
+                        TargetObject = stop.target,
                         StandTile = stop.standTile.ToPoint(),
                         FacingDirection = stop.facing,
                         ScheduledTime = stop.scheduledTime,

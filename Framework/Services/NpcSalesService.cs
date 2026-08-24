@@ -51,7 +51,15 @@ namespace MarketTown.Framework.Services
                 int basePrice = evaluatedItem.sellToStorePrice(-1L);
                 if (basePrice <= 0) basePrice = 1; // Fallback for 0-value items
 
-                int sellPrice = (int)(basePrice * _config.PriceMultiplier * priceModifier);
+                float qualityModifier = evaluatedItem.Quality switch
+                {
+                    1 => 1.05f, // Silver
+                    2 => 1.15f, // Gold
+                    4 => 1.30f, // Iridium
+                    _ => 1.0f   // Regular/None
+                };
+
+                int sellPrice = (int)(basePrice * _config.PriceMultiplier * priceModifier * qualityModifier);
 
                 // Determine who gets the money (handle separate wallets in multiplayer)
                 Farmer seller = Game1.player;

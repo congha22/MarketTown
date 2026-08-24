@@ -40,6 +40,17 @@ namespace MarketTown.Framework.Services
                         // -----------------------------------------------------------------------
                         // SCENARIO 1: NPC is standing still — insert all stops sequentially
                         // -----------------------------------------------------------------------
+                        
+                        // Anchor at current position so the schedule parser knows their true location.
+                        // (Crucial if they were warped programmatically, avoiding invalid path generation)
+                        int anchorTime = Game1.timeOfDay;
+                        while (schedule.ContainsKey(anchorTime) || stops.Any(s => s.scheduledTime == anchorTime))
+                        {
+                            anchorTime -= 10;
+                            if (anchorTime % 100 > 50) anchorTime -= 40;
+                        }
+                        tempSche[anchorTime] = $"{anchorTime} {npc.currentLocation.NameOrUniqueName} {npc.Tile.X} {npc.Tile.Y} {npc.FacingDirection}/";
+
                         foreach (var stop in stops)
                         {
                             string stopKey = stop.scheduledTime.ToString();

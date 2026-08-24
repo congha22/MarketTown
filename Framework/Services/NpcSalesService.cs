@@ -77,6 +77,12 @@ namespace MarketTown.Framework.Services
                 }
 
                 seller.Money += sellPrice;
+                
+                // Track shipping stats
+                seller.shippedBasic(evaluatedItem.ItemId, 1);
+                seller.stats.ItemsShipped += 1;
+                Game1.stats.checkForShippingAchievements();
+
                 Game1.playSound("purchase");
                 Game1.chatBox.addInfoMessage($"Sold {evaluatedItem.DisplayName} to {npc.Name} for {sellPrice}g with base of {basePrice}");
 

@@ -153,8 +153,8 @@ namespace MarketTown.Framework.Services
                         _monitor.Log($"{npc.Name} arrived at table (tile: {target.StandTile}), analyzing item...", LogLevel.Debug);
                     }
                 }
-                // Stage 2: After inspecting for 300 ticks, evaluate taste and display final reaction
-                else if (Game1.ticks - target.ArrivalTick >= 300)
+                // Stage 2: After inspecting for 120 ticks, evaluate taste and display final reaction
+                else if (Game1.ticks - target.ArrivalTick >= 120)
                 {
                     target.HasReacted = true;
                     npc.faceDirection(target.FacingDirection);

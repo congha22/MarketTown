@@ -175,9 +175,13 @@ namespace MarketTown.Framework.Services
                     var item = chest.Items[i];
                     if (item != null && matchFunc(item))
                     {
-                        setSlot(item);
-                        chest.Items[i] = null;
-                        chest.clearNulls();
+                        setSlot(item.getOne());
+                        item.Stack--;
+                        if (item.Stack <= 0)
+                        {
+                            chest.Items[i] = null;
+                            chest.clearNulls();
+                        }
                         return true;
                     }
                 }
@@ -237,9 +241,13 @@ namespace MarketTown.Framework.Services
 
             if (bestItem != null)
             {
-                table.heldObject.Value = bestItem;
-                bestChest.Items[bestItemIndex] = null;
-                bestChest.clearNulls();
+                table.heldObject.Value = (StardewValley.Object)bestItem.getOne();
+                bestItem.Stack--;
+                if (bestItem.Stack <= 0)
+                {
+                    bestChest.Items[bestItemIndex] = null;
+                    bestChest.clearNulls();
+                }
 
                 _monitor.Log($"Restocked {table.Name} with {bestItem.DisplayName} from chest (Score: {bestScore}).", LogLevel.Debug);
                 return true;

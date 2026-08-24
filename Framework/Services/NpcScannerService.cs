@@ -23,6 +23,12 @@ namespace MarketTown.Framework.Services
         /// <summary>Tracks the next available scan time (in total minutes) for each NPC by name.</summary>
         private Dictionary<string, int> _npcScanCooldowns = new Dictionary<string, int>();
 
+        /// <summary>The object categories that NPCs are interested in browsing (from original mod).</summary>
+        private static readonly HashSet<int> _validItemCategories = new HashSet<int> 
+        { 
+            -81, -80, -79, -75, -74, -28, -27, -26, -23, -22, -21, -20, -19, -18, -17, -16, -15, -12, -8, -7, -6, -5, -4, -2 
+        };
+
         /// <summary>Tracks active table stops that NPCs are currently browsing.</summary>
         private readonly List<BrowsingTarget> _activeBrowsingTargets = new List<BrowsingTarget>();
 
@@ -211,10 +217,13 @@ namespace MarketTown.Framework.Services
             {
                 if (furniture.furniture_type.Value == Furniture.table && furniture.heldObject.Value != null)
                 {
-                    float distance = Utility.distance(npc.TilePoint.X, furniture.TileLocation.X, npc.TilePoint.Y, furniture.TileLocation.Y);
-                    if (distance <= _config.NpcScanRange)
+                    if (_validItemCategories.Contains(furniture.heldObject.Value.Category))
                     {
-                        validTables.Add(furniture);
+                        float distance = Utility.distance(npc.TilePoint.X, furniture.TileLocation.X, npc.TilePoint.Y, furniture.TileLocation.Y);
+                        if (distance <= _config.NpcScanRange)
+                        {
+                            validTables.Add(furniture);
+                        }
                     }
                 }
             }
@@ -243,16 +252,19 @@ namespace MarketTown.Framework.Services
         /// </summary>
         private void SendNpcToTable(NPC npc, StardewValley.Objects.Furniture initialTable)
         {
-            // Find other tables holding items within browse range of the initial table
+            // Find other tables holding valid items within browse range of the initial table
             var nearbyTables = new List<Furniture>();
             foreach (var f in npc.currentLocation.furniture)
             {
                 if (f != null && f != initialTable && f.furniture_type.Value == Furniture.table && f.heldObject.Value != null)
                 {
-                    float dist = Microsoft.Xna.Framework.Vector2.Distance(f.TileLocation, initialTable.TileLocation);
-                    if (dist <= _config.NpcBrowseRange)
+                    if (_validItemCategories.Contains(f.heldObject.Value.Category))
                     {
-                        nearbyTables.Add(f);
+                        float dist = Microsoft.Xna.Framework.Vector2.Distance(f.TileLocation, initialTable.TileLocation);
+                        if (dist <= _config.NpcBrowseRange)
+                        {
+                            nearbyTables.Add(f);
+                        }
                     }
                 }
             }

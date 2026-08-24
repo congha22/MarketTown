@@ -32,7 +32,8 @@ namespace MarketTown
 
             // Initialize services
             _mapPathfindingService = new MapPathfindingService(this.Monitor, this.Config, this.Helper);
-            _npcScannerService = new NpcScannerService(this.Monitor, this.Config, this.Helper, _mapPathfindingService);
+            var salesService = new NpcSalesService(this.Monitor, this.Config);
+            _npcScannerService = new NpcScannerService(this.Monitor, this.Config, this.Helper, salesService, _mapPathfindingService);
 
             // Register GMCM
             ModConfigMenu.Register(this.Helper, this.ModManifest, this.Config);

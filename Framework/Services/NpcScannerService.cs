@@ -15,6 +15,7 @@ namespace MarketTown.Framework.Services
         private readonly IMonitor _monitor;
         private readonly ModConfig _config;
         private readonly IModHelper _helper;
+        private readonly NpcSalesService _salesService;
         private readonly MapPathfindingService _pathfindingService;
 
         private List<NPC> _cachedNpcs = new List<NPC>();
@@ -24,9 +25,9 @@ namespace MarketTown.Framework.Services
         private Dictionary<string, int> _npcScanCooldowns = new Dictionary<string, int>();
 
         /// <summary>The object categories that NPCs are interested in browsing (from original mod).</summary>
-        private static readonly HashSet<int> _validItemCategories = new HashSet<int> 
-        { 
-            -81, -80, -79, -75, -74, -28, -27, -26, -23, -22, -21, -20, -19, -18, -17, -16, -15, -12, -8, -7, -6, -5, -4, -2 
+        private static readonly HashSet<int> _validItemCategories = new HashSet<int>
+        {
+            -81, -80, -79, -75, -74, -28, -27, -26, -23, -22, -21, -20, -19, -18, -17, -16, -15, -12, -8, -7, -6, -5, -4, -2
         };
 
         /// <summary>Tracks active table stops that NPCs are currently browsing.</summary>
@@ -51,11 +52,12 @@ namespace MarketTown.Framework.Services
             public bool HasReacted { get; set; }
         }
 
-        public NpcScannerService(IMonitor monitor, ModConfig config, IModHelper helper, MapPathfindingService pathfindingService = null)
+        public NpcScannerService(IMonitor monitor, ModConfig config, IModHelper helper, NpcSalesService salesService, MapPathfindingService pathfindingService = null)
         {
             _monitor = monitor;
             _config = config;
             _helper = helper;
+            _salesService = salesService;
             _pathfindingService = pathfindingService;
 
             _helper.Events.GameLoop.DayStarted += OnDayStarted;
@@ -181,7 +183,11 @@ namespace MarketTown.Framework.Services
                         if (taste == NPC.gift_taste_hate && Game1.random.NextDouble() < 0.5) reactionEmote = 36; // X mark
                         if (taste == NPC.gift_taste_neutral && Game1.random.NextDouble() < 0.5) reactionEmote = 32; // Happy
 
-                        _monitor.Log($"{npc.Name} evaluated '{evaluatedItem.DisplayName}' (Taste: {taste}) -> reacted with emote {reactionEmote}.", LogLevel.Debug);
+                        bool bought = _salesService.TryProcessPurchase(npc, target.TargetObject, evaluatedItem, taste);
+                        if (bought)
+                        {
+                            reactionEmote = 32; // Happy emote when buying successfully
+                        }
                     }
                     else
                     {
@@ -222,7 +228,7 @@ namespace MarketTown.Framework.Services
 
             // Scan for all valid targets (tables with items, mannequins with clothes) within range
             var validTargets = new List<StardewValley.Object>();
-            
+
             // Check furniture (Tables)
             foreach (var furniture in npc.currentLocation.furniture)
             {
@@ -282,7 +288,7 @@ namespace MarketTown.Framework.Services
         {
             // Find other valid targets within browse range of the initial target
             var nearbyTargets = new List<StardewValley.Object>();
-            
+
             // Tables
             foreach (var f in npc.currentLocation.furniture)
             {
@@ -298,7 +304,7 @@ namespace MarketTown.Framework.Services
                     }
                 }
             }
-            
+
             // Mannequins
             foreach (var obj in npc.currentLocation.Objects.Values)
             {

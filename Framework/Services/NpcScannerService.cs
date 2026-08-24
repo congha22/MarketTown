@@ -141,8 +141,8 @@ namespace MarketTown.Framework.Services
                         target.ArrivalTick = (uint)Game1.ticks;
                         npc.faceDirection(target.FacingDirection);
 
-                        // Initial analyzing emote: 8 (ellipsis ...) or 40 (question ?)
-                        int inspectEmote = Game1.random.NextDouble() < 0.5 ? 8 : 40;
+                        // Arrive emote: Exclamation (16)
+                        int inspectEmote = 16;
                         npc.doEmote(inspectEmote);
 
                         _monitor.Log($"{npc.Name} arrived at table (tile: {target.StandTile}), analyzing item...", LogLevel.Debug);
@@ -171,28 +171,20 @@ namespace MarketTown.Framework.Services
                         int taste = npc.getGiftTasteForThisItem(evaluatedItem);
                         reactionEmote = taste switch
                         {
-                            NPC.gift_taste_love => 20,       // Heart ❤️ (Loved)
-                            NPC.gift_taste_like => 32,       // Happy 😊 (Liked)
-                            NPC.gift_taste_dislike => 28,    // Sad/sweatdrop 💧 (Disliked)
-                            NPC.gift_taste_hate => 12,       // Angry 💢 (Hated)
-                            _ => 56                          // Music note 🎵 (Neutral)
+                            NPC.gift_taste_love => 20,       // Heart
+                            NPC.gift_taste_like => 32,       // Happy
+                            NPC.gift_taste_dislike => Game1.random.NextDouble() < 0.5 ? 4 : 12, // Speech question or Angry
+                            NPC.gift_taste_hate => 36,       // X mark
+                            _ => 56                          // Music note (Neutral)
                         };
 
-                        // Variety variations
-                        if (taste == NPC.gift_taste_love && Game1.random.NextDouble() < 0.3) reactionEmote = 60; // Blush
-                        if (taste == NPC.gift_taste_hate && Game1.random.NextDouble() < 0.5) reactionEmote = 36; // X mark
-                        if (taste == NPC.gift_taste_neutral && Game1.random.NextDouble() < 0.5) reactionEmote = 32; // Happy
-
                         bool bought = _salesService.TryProcessPurchase(npc, target.TargetObject, evaluatedItem, taste);
-                        if (bought)
-                        {
-                            reactionEmote = 32; // Happy emote when buying successfully
-                        }
+                        // Do not override the taste emote when they buy it
                     }
                     else
                     {
-                        // Target is empty
-                        reactionEmote = 40; // Question ❓
+                        // Target is empty, use 60
+                        reactionEmote = 60; 
                         _monitor.Log($"{npc.Name} checked target (empty) -> reacted with emote {reactionEmote}.", LogLevel.Debug);
                     }
 

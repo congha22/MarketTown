@@ -48,8 +48,7 @@ namespace MarketTown.Framework.Services
 
                         foreach (var piece in schedule)
                         {
-                            int targetKey = piece.Key < resumeTime ? resumeTime : piece.Key;
-                            TryAddEntry(tempSche, targetKey, piece.Value);
+                            TryAddEntry(tempSche, piece.Key, piece.Value);
                         }
                     }
                     else if (currentDirection != null)
@@ -76,13 +75,13 @@ namespace MarketTown.Framework.Services
                                             $"{currentDirection.facingDirection}/";
                         tempSche[resumeTime] = resumeEntry;
 
-                        // Re-add the rest of the schedule, skipping the currentDirection entry
-                        int subsequentResumeTime = NpcScheduleHelper.ConvertToHour(resumeTime + 10);
+                        // Re-add the rest of the schedule, skipping the currentDirection entry.
+                        // Use piece.Key directly — past entries land at their original key (no collision
+                        // since all injected entries are >= Game1.timeOfDay) and are ignored by the game.
                         foreach (var piece in schedule)
                         {
                             if (piece.Value.time == currentDirection.time) continue; // already re-added above
-                            int targetKey = piece.Key < subsequentResumeTime ? subsequentResumeTime : piece.Key;
-                            TryAddEntry(tempSche, targetKey, piece.Value);
+                            TryAddEntry(tempSche, piece.Key, piece.Value);
                         }
                     }
                 }

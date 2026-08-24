@@ -97,29 +97,61 @@ namespace MarketTown.Framework.Services
                 return;
             }
 
-            // Scan for tables with items
+            // Scan for tables with items within range
             foreach (var furniture in npc.currentLocation.furniture)
             {
                 if (furniture.furniture_type.Value == Furniture.table && furniture.heldObject.Value != null)
                 {
-                    float distance = Utility.distance(npc.TilePoint.X, npc.TilePoint.X, furniture.TileLocation.X, furniture.TileLocation.Y);
+                    // Fix: use both X and Y for correct tile distance
+                    float distance = Utility.distance(npc.TilePoint.X, furniture.TileLocation.X, npc.TilePoint.Y, furniture.TileLocation.Y);
                     if (distance <= _config.NpcScanRange)
                     {
-                        Game1.chatBox.addErrorMessage(distance.ToString());
                         // Apply chance roll
                         if (Game1.random.NextDouble() <= _config.NpcScanChance)
                         {
-                            _monitor.Log($"{npc.Name} spotted {furniture.heldObject.Value.Name} on a table!", LogLevel.Debug);
+                            _monitor.Log($"{npc.Name} spotted '{furniture.heldObject.Value.Name}' on a table at {furniture.TileLocation} — sending them over.", LogLevel.Debug);
 
-                            // Put NPC on cooldown
+                            // Apply cooldown before pathing (prevents double-assignment)
                             _npcScanCooldowns[npc.Name] = currentTotalMinutes + _config.NpcScanCooldownMinutes;
 
-                            // Break out of loop since they found something
+                            // Send the NPC toward the table
+                            SendNpcToTable(npc, furniture);
                             break;
                         }
                     }
                 }
             }
+        }
+
+        /// <summary>
+        /// Injects a new schedule point next to the given furniture table for the NPC,
+        /// so on the next 10-minute game tick they naturally walk there.
+        /// </summary>
+        private void SendNpcToTable(NPC npc, StardewValley.Objects.Furniture table)
+        {
+            var standTile = NpcScheduleHelper.GetAdjacentWalkableTile(npc.currentLocation, table.TileLocation, out int facing);
+
+            if (standTile == Microsoft.Xna.Framework.Vector2.Zero)
+            {
+                _monitor.Log($"{npc.Name}: no walkable tile adjacent to table at {table.TileLocation} — skipping.", LogLevel.Debug);
+                return;
+            }
+
+            string nextTime = NpcScheduleHelper.ConvertToHour(Game1.timeOfDay + 10).ToString();
+
+            bool success = NpcScheduleService.AddNewPointToSchedule(
+                npc,
+                nextTime,
+                npc.currentLocation.NameOrUniqueName,
+                ((int)standTile.X).ToString(),
+                ((int)standTile.Y).ToString(),
+                facing.ToString()
+            );
+
+            if (success)
+                _monitor.Log($"{npc.Name} is heading to table at {table.TileLocation} (stand tile: {standTile}) at time {nextTime}.", LogLevel.Debug);
+            else
+                _monitor.Log($"{npc.Name}: schedule injection failed (likely mid-transition). Skipping.", LogLevel.Debug);
         }
     }
 }

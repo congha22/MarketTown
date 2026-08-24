@@ -34,7 +34,8 @@ namespace MarketTown
             _mapPathfindingService = new MapPathfindingService(this.Monitor, this.Config, this.Helper);
             
             var tableRestockService = new TableRestockService(this.Monitor, this.Config, this.Helper);
-            var salesService = new NpcSalesService(this.Monitor, this.Config, tableRestockService);
+            var salesTrackingService = new SalesTrackingService(this.Monitor, this.Helper);
+            var salesService = new NpcSalesService(this.Monitor, this.Config, tableRestockService, salesTrackingService);
             
             _npcScannerService = new NpcScannerService(this.Monitor, this.Config, this.Helper, salesService, _mapPathfindingService);
 

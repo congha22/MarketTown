@@ -12,12 +12,14 @@ namespace MarketTown.Framework.Services
         private readonly IMonitor _monitor;
         private readonly ModConfig _config;
         private readonly TableRestockService _restockService;
+        private readonly SalesTrackingService _salesTrackingService;
 
-        public NpcSalesService(IMonitor monitor, ModConfig config, TableRestockService restockService)
+        public NpcSalesService(IMonitor monitor, ModConfig config, TableRestockService restockService, SalesTrackingService salesTrackingService)
         {
             _monitor = monitor;
             _config = config;
             _restockService = restockService;
+            _salesTrackingService = salesTrackingService;
         }
 
         /// <summary>
@@ -82,6 +84,8 @@ namespace MarketTown.Framework.Services
                 seller.shippedBasic(evaluatedItem.ItemId, 1);
                 seller.stats.ItemsShipped += 1;
                 Game1.stats.checkForShippingAchievements();
+
+                _salesTrackingService.RecordSale(npc, evaluatedItem, sellPrice, targetObject.Location);
 
                 Game1.playSound("purchase");
                 Game1.chatBox.addInfoMessage($"Sold {evaluatedItem.DisplayName} to {npc.Name} for {sellPrice}g with base of {basePrice}");

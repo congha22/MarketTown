@@ -11,11 +11,13 @@ namespace MarketTown.Framework.Services
     {
         private readonly IMonitor _monitor;
         private readonly ModConfig _config;
+        private readonly TableRestockService _restockService;
 
-        public NpcSalesService(IMonitor monitor, ModConfig config)
+        public NpcSalesService(IMonitor monitor, ModConfig config, TableRestockService restockService)
         {
             _monitor = monitor;
             _config = config;
+            _restockService = restockService;
         }
 
         /// <summary>
@@ -83,6 +85,7 @@ namespace MarketTown.Framework.Services
                     else if (mannequin.boots.Value == evaluatedItem) mannequin.boots.Value = null;
                 }
 
+                _restockService.OnItemSold(targetObject, evaluatedItem);
                 _monitor.Log($"{npc.Name} bought '{evaluatedItem.DisplayName}' for {sellPrice}g (Taste: {taste}, Chance: {finalChance:P0})", LogLevel.Debug);
                 return true;
             }

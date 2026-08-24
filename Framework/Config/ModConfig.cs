@@ -12,5 +12,15 @@ namespace MarketTown.Framework.Config
         
         public float BaseBuyChance { get; set; } = 0.5f;
         public float PriceMultiplier { get; set; } = 1.5f;
+        
+        public float RestockChance { get; set; } = 0.5f;
+        public RestockRule RestockMinimumRule { get; set; } = RestockRule.Random;
+    }
+
+    public enum RestockRule
+    {
+        SameItem,
+        SameCategory,
+        Random
     }
 }

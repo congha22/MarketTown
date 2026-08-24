@@ -25,6 +25,8 @@ namespace MarketTown.Framework.Config
                     config.PreventWalkingThroughFurniture = true;
                     config.BaseBuyChance = 0.5f;
                     config.PriceMultiplier = 1.5f;
+                    config.RestockChance = 0.5f;
+                    config.RestockMinimumRule = RestockRule.Random;
                 },
                 save: () => helper.WriteConfig(config)
             );
@@ -106,6 +108,25 @@ namespace MarketTown.Framework.Config
                 setValue: value => config.PriceMultiplier = value,
                 min: 0.1f,
                 max: 10.0f
+            );
+
+            configMenu.AddNumberOption(
+                mod: manifest,
+                name: () => "Restock Chance",
+                tooltip: () => "Chance (0.0 to 1.0) that a table will restock from a chest every 10 in-game minutes.",
+                getValue: () => config.RestockChance,
+                setValue: value => config.RestockChance = value,
+                min: 0.0f,
+                max: 1.0f
+            );
+
+            configMenu.AddTextOption(
+                mod: manifest,
+                name: () => "Restock Minimum Rule",
+                tooltip: () => "The minimum priority rule when picking items from chests to restock tables.",
+                getValue: () => config.RestockMinimumRule.ToString(),
+                setValue: value => config.RestockMinimumRule = (RestockRule)System.Enum.Parse(typeof(RestockRule), value),
+                allowedValues: System.Enum.GetNames(typeof(RestockRule))
             );
         }
     }

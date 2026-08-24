@@ -12,6 +12,7 @@ namespace MarketTown
         /// <summary>The mod configuration from the player.</summary>
         public ModConfig Config { get; private set; }
 
+        private MapPathfindingService _mapPathfindingService;
         private NpcScannerService _npcScannerService;
 
         /// <summary>The mod entry point, called after the mod is first loaded.</summary>
@@ -30,7 +31,8 @@ namespace MarketTown
             this.Monitor.Log("Market Town initialized successfully.", LogLevel.Info);
 
             // Initialize services
-            _npcScannerService = new NpcScannerService(this.Monitor, this.Config, this.Helper);
+            _mapPathfindingService = new MapPathfindingService(this.Monitor, this.Config, this.Helper);
+            _npcScannerService = new NpcScannerService(this.Monitor, this.Config, this.Helper, _mapPathfindingService);
 
             // Register GMCM
             ModConfigMenu.Register(this.Helper, this.ModManifest, this.Config);

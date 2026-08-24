@@ -22,6 +22,7 @@ namespace MarketTown.Framework.Config
                     config.NpcScanChance = 0.1f;
                     config.NpcBrowseRange = 5;
                     config.MaxExtraBrowseTables = 2;
+                    config.PreventWalkingThroughFurniture = true;
                 },
                 save: () => helper.WriteConfig(config)
             );
@@ -75,6 +76,14 @@ namespace MarketTown.Framework.Config
                 setValue: value => config.MaxExtraBrowseTables = value,
                 min: 0,
                 max: 5
+            );
+
+            configMenu.AddBoolOption(
+                mod: manifest,
+                name: () => "Prevent Walking Through Furniture",
+                tooltip: () => "When enabled, dynamically sets NoPath map tile properties so NPC pathfinding routes around placed tables and obstacles.",
+                getValue: () => config.PreventWalkingThroughFurniture,
+                setValue: value => config.PreventWalkingThroughFurniture = value
             );
         }
     }

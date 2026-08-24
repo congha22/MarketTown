@@ -8,5 +8,6 @@ namespace MarketTown.Framework.Config
         public float NpcScanChance { get; set; } = 0.1f;
         public int NpcBrowseRange { get; set; } = 5;
         public int MaxExtraBrowseTables { get; set; } = 2;
+        public bool PreventWalkingThroughFurniture { get; set; } = true;
     }
 }

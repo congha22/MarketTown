@@ -15,6 +15,7 @@ namespace MarketTown.Framework.Services
         private readonly IMonitor _monitor;
         private readonly ModConfig _config;
         private readonly IModHelper _helper;
+        private readonly MapPathfindingService _pathfindingService;
 
         private List<NPC> _cachedNpcs = new List<NPC>();
         private int _npcScanIndex = 0;
@@ -44,11 +45,12 @@ namespace MarketTown.Framework.Services
             public bool HasReacted { get; set; }
         }
 
-        public NpcScannerService(IMonitor monitor, ModConfig config, IModHelper helper)
+        public NpcScannerService(IMonitor monitor, ModConfig config, IModHelper helper, MapPathfindingService pathfindingService = null)
         {
             _monitor = monitor;
             _config = config;
             _helper = helper;
+            _pathfindingService = pathfindingService;
 
             _helper.Events.GameLoop.DayStarted += OnDayStarted;
             _helper.Events.GameLoop.UpdateTicked += OnUpdateTicked;
@@ -278,6 +280,9 @@ namespace MarketTown.Framework.Services
                 _monitor.Log($"{npc.Name}: no walkable tiles adjacent to spotted tables — skipping.", LogLevel.Debug);
                 return;
             }
+
+            // Ensure NoPath properties are up-to-date for all impassable furniture before pathfinder runs
+            _pathfindingService?.UpdateLocationPathProperties(npc.currentLocation);
 
             var scheduleStops = stops.Select(s => (s.locationName, s.standTile, s.facing, s.scheduledTime)).ToList();
             bool success = NpcScheduleService.AddNewPointsToSchedule(npc, scheduleStops);

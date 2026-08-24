@@ -121,10 +121,15 @@ namespace MarketTown.Framework.Services
             // Clean up stale targets from past time ticks
             _activeBrowsingTargets.RemoveAll(t => Game1.timeOfDay > NpcScheduleHelper.ConvertToHour(t.ScheduledTime + 40));
 
+            var seenNpcs = new HashSet<string>();
+
             for (int i = 0; i < _activeBrowsingTargets.Count; i++)
             {
                 var target = _activeBrowsingTargets[i];
                 if (target.HasReacted) continue;
+
+                // Only process the first active (un-reacted) target for each NPC to prevent simultaneous checking of nearby tables
+                if (!seenNpcs.Add(target.NpcName)) continue;
 
                 var npc = _cachedNpcs.FirstOrDefault(n => n.Name == target.NpcName);
                 if (npc == null || npc.currentLocation == null) continue;
@@ -133,7 +138,7 @@ namespace MarketTown.Framework.Services
                 if (!target.HasArrived)
                 {
                     bool isAtTile = npc.TilePoint == target.StandTile
-                        || Microsoft.Xna.Framework.Vector2.Distance(npc.Tile, target.StandTile.ToVector2()) < 1.2f;
+                        || Microsoft.Xna.Framework.Vector2.Distance(npc.Tile, target.StandTile.ToVector2()) <= 1f;
 
                     if (isAtTile && !npc.isMoving())
                     {
@@ -184,7 +189,7 @@ namespace MarketTown.Framework.Services
                     else
                     {
                         // Target is empty, use 60
-                        reactionEmote = 60; 
+                        reactionEmote = 60;
                         _monitor.Log($"{npc.Name} checked target (empty) -> reacted with emote {reactionEmote}.", LogLevel.Debug);
                     }
 

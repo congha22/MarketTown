@@ -205,28 +205,35 @@ namespace MarketTown.Framework.Services
                 return;
             }
 
-            // Scan for tables with items within range
+            // Scan for all valid tables with items within range
+            var validTables = new List<Furniture>();
             foreach (var furniture in npc.currentLocation.furniture)
             {
                 if (furniture.furniture_type.Value == Furniture.table && furniture.heldObject.Value != null)
                 {
-                    // Fix: use both X and Y for correct tile distance
                     float distance = Utility.distance(npc.TilePoint.X, furniture.TileLocation.X, npc.TilePoint.Y, furniture.TileLocation.Y);
                     if (distance <= _config.NpcScanRange)
                     {
-                        // Apply chance roll
-                        if (Game1.random.NextDouble() <= _config.NpcScanChance)
-                        {
-                            _monitor.Log($"{npc.Name} spotted '{furniture.heldObject.Value.Name}' on a table at {furniture.TileLocation} — searching nearby tables to browse.", LogLevel.Debug);
-
-                            // Apply cooldown before pathing (prevents double-assignment)
-                            _npcScanCooldowns[npc.Name] = currentTotalMinutes + _config.NpcScanCooldownMinutes;
-
-                            // Send the NPC toward the table and any nearby browse tables
-                            SendNpcToTable(npc, furniture);
-                            break;
-                        }
+                        validTables.Add(furniture);
                     }
+                }
+            }
+
+            if (validTables.Count > 0)
+            {
+                // Apply chance roll
+                if (Game1.random.NextDouble() <= _config.NpcScanChance)
+                {
+                    // Pick a random valid table from the list
+                    Furniture selectedTable = validTables[Game1.random.Next(validTables.Count)];
+
+                    _monitor.Log($"{npc.Name} spotted '{selectedTable.heldObject.Value.Name}' on a table at {selectedTable.TileLocation} — searching nearby tables to browse.", LogLevel.Debug);
+
+                    // Apply cooldown before pathing (prevents double-assignment)
+                    _npcScanCooldowns[npc.Name] = currentTotalMinutes + _config.NpcScanCooldownMinutes;
+
+                    // Send the NPC toward the selected table and any nearby browse tables
+                    SendNpcToTable(npc, selectedTable);
                 }
             }
         }

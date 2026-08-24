@@ -6,5 +6,7 @@ namespace MarketTown.Framework.Config
         public int NpcScanRange { get; set; } = 20;
         public int NpcScanCooldownMinutes { get; set; } = 180;
         public float NpcScanChance { get; set; } = 0.1f;
+        public int NpcBrowseRange { get; set; } = 5;
+        public int MaxExtraBrowseTables { get; set; } = 2;
     }
 }

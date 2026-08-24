@@ -20,6 +20,8 @@ namespace MarketTown.Framework.Config
                     config.NpcScanRange = 20;
                     config.NpcScanCooldownMinutes = 180;
                     config.NpcScanChance = 0.1f;
+                    config.NpcBrowseRange = 5;
+                    config.MaxExtraBrowseTables = 2;
                 },
                 save: () => helper.WriteConfig(config)
             );
@@ -53,6 +55,26 @@ namespace MarketTown.Framework.Config
                 setValue: value => config.NpcScanChance = value,
                 min: 0.0f,
                 max: 1.0f
+            );
+
+            configMenu.AddNumberOption(
+                mod: manifest,
+                name: () => "Nearby Browse Range",
+                tooltip: () => "How many tiles away from the first table to search for additional tables to browse.",
+                getValue: () => config.NpcBrowseRange,
+                setValue: value => config.NpcBrowseRange = value,
+                min: 1,
+                max: 20
+            );
+
+            configMenu.AddNumberOption(
+                mod: manifest,
+                name: () => "Max Extra Browse Tables",
+                tooltip: () => "Maximum number of extra nearby tables the NPC will visit after the first one (0 to 5).",
+                getValue: () => config.MaxExtraBrowseTables,
+                setValue: value => config.MaxExtraBrowseTables = value,
+                min: 0,
+                max: 5
             );
         }
     }

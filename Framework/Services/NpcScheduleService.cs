@@ -11,20 +11,13 @@ namespace MarketTown.Framework.Services
     internal static class NpcScheduleService
     {
         /// <summary>
-        /// Injects a new schedule destination for the NPC at the next 10-minute game tick,
+        /// Injects a list of schedule destinations sequentially (each +10 minutes apart) for the NPC,
         /// preserving their existing schedule and current movement state.
         /// </summary>
-        /// <param name="npc">The NPC to redirect.</param>
-        /// <param name="addTime">The HHMM time at which the NPC should arrive (should be Game1.timeOfDay + 10).</param>
-        /// <param name="locationName">The NameOrUniqueName of the target location.</param>
-        /// <param name="x">Target tile X.</param>
-        /// <param name="y">Target tile Y.</param>
-        /// <param name="facingDir">Facing direction on arrival (0=up,1=right,2=down,3=left).</param>
-        /// <returns>True if the injection succeeded, false otherwise.</returns>
-        public static bool AddNewPointToSchedule(NPC npc, string addTime, string locationName, string x, string y, string facingDir)
+        public static bool AddNewPointsToSchedule(NPC npc, List<(string locationName, Microsoft.Xna.Framework.Vector2 standTile, int facing, int scheduledTime)> stops)
         {
             // Only the master game controls NPC schedules
-            if (!Game1.IsMasterGame) return false;
+            if (!Game1.IsMasterGame || stops == null || stops.Count == 0) return false;
 
             // If NPC already has queued paths the schedule system is mid-transition — skip
             if (npc.queuedSchedulePaths.Count != 0) return false;
@@ -37,66 +30,82 @@ namespace MarketTown.Framework.Services
                 // We'll build the new schedule as a sorted dict, then serialize it
                 SortedDictionary<int, string> tempSche = new SortedDictionary<int, string>();
 
+                int lastStopTime = stops.Last().scheduledTime;
+                int resumeTime = NpcScheduleHelper.ConvertToHour(lastStopTime + 10);
+
                 if (schedule != null && schedule.Count > 0)
                 {
                     if (currentDirection == null && !npc.isMoving())
                     {
                         // -----------------------------------------------------------------------
-                        // SCENARIO 1: NPC is standing still — just insert the new entry
+                        // SCENARIO 1: NPC is standing still — insert all stops sequentially
                         // -----------------------------------------------------------------------
-                        tempSche.Add(int.Parse(addTime), $"{addTime} {locationName} {x} {y} {facingDir}/");
+                        foreach (var stop in stops)
+                        {
+                            string stopKey = stop.scheduledTime.ToString();
+                            tempSche[stop.scheduledTime] = $"{stopKey} {stop.locationName} {(int)stop.standTile.X} {(int)stop.standTile.Y} {stop.facing}/";
+                        }
 
                         foreach (var piece in schedule)
                         {
-                            TryAddEntry(tempSche, piece.Key, piece.Value);
+                            int targetKey = piece.Key < resumeTime ? resumeTime : piece.Key;
+                            TryAddEntry(tempSche, targetKey, piece.Value);
                         }
                     }
                     else if (currentDirection != null)
                     {
                         // -----------------------------------------------------------------------
-                        // SCENARIO 2: NPC is mid-walk — stop them, inject table, re-queue their
+                        // SCENARIO 2: NPC is mid-walk — stop them, inject stops, re-queue their
                         //             original destination after
                         // -----------------------------------------------------------------------
 
                         // Freeze NPC at their current position on the current tick
-                        tempSche.Add(Game1.timeOfDay,
-                            $"{Game1.timeOfDay} {npc.currentLocation.NameOrUniqueName} {npc.Tile.X} {npc.Tile.Y} {npc.FacingDirection}/");
+                        tempSche[Game1.timeOfDay] =
+                            $"{Game1.timeOfDay} {npc.currentLocation.NameOrUniqueName} {npc.Tile.X} {npc.Tile.Y} {npc.FacingDirection}/";
 
-                        // New destination at next tick
-                        tempSche.Add(int.Parse(addTime), $"{addTime} {locationName} {x} {y} {facingDir}/");
+                        // Add all browse stops
+                        foreach (var stop in stops)
+                        {
+                            string stopKey = stop.scheduledTime.ToString();
+                            tempSche[stop.scheduledTime] = $"{stopKey} {stop.locationName} {(int)stop.standTile.X} {(int)stop.standTile.Y} {stop.facing}/";
+                        }
 
-                        // Re-queue their original walk one tick after that
-                        int resumeTime = NpcScheduleHelper.ConvertToHour(int.Parse(addTime) + 10);
+                        // Re-queue their original walk one tick after the last browse stop
                         string resumeEntry = $"{resumeTime} {currentDirection.targetLocationName} " +
                                             $"{currentDirection.targetTile.X} {currentDirection.targetTile.Y} " +
                                             $"{currentDirection.facingDirection}/";
-                        tempSche.Add(resumeTime, resumeEntry);
+                        tempSche[resumeTime] = resumeEntry;
 
                         // Re-add the rest of the schedule, skipping the currentDirection entry
+                        int subsequentResumeTime = NpcScheduleHelper.ConvertToHour(resumeTime + 10);
                         foreach (var piece in schedule)
                         {
                             if (piece.Value.time == currentDirection.time) continue; // already re-added above
-                            TryAddEntry(tempSche, piece.Key, piece.Value);
+                            int targetKey = piece.Key < subsequentResumeTime ? subsequentResumeTime : piece.Key;
+                            TryAddEntry(tempSche, targetKey, piece.Value);
                         }
                     }
                 }
                 else
                 {
                     // -----------------------------------------------------------------------
-                    // SCENARIO 3: NPC has no schedule — anchor, inject, return to anchor
+                    // SCENARIO 3: NPC has no schedule — anchor, inject stops, return to anchor
                     // -----------------------------------------------------------------------
 
                     // Anchor at current position
-                    tempSche.Add(Game1.timeOfDay,
-                        $"{Game1.timeOfDay} {npc.currentLocation.NameOrUniqueName} {npc.Tile.X} {npc.Tile.Y} {npc.FacingDirection}/");
+                    tempSche[Game1.timeOfDay] =
+                        $"{Game1.timeOfDay} {npc.currentLocation.NameOrUniqueName} {npc.Tile.X} {npc.Tile.Y} {npc.FacingDirection}/";
 
-                    // New destination
-                    tempSche.Add(int.Parse(addTime), $"{addTime} {locationName} {x} {y} {facingDir}/");
+                    // Add all browse stops
+                    foreach (var stop in stops)
+                    {
+                        string stopKey = stop.scheduledTime.ToString();
+                        tempSche[stop.scheduledTime] = $"{stopKey} {stop.locationName} {(int)stop.standTile.X} {(int)stop.standTile.Y} {stop.facing}/";
+                    }
 
                     // Return to their current position afterward
-                    int returnTime = NpcScheduleHelper.ConvertToHour(int.Parse(addTime) + 10);
-                    tempSche.Add(returnTime,
-                        $"{returnTime} {npc.currentLocation.NameOrUniqueName} {npc.Tile.X} {npc.Tile.Y} {npc.FacingDirection}/");
+                    tempSche[resumeTime] =
+                        $"{resumeTime} {npc.currentLocation.NameOrUniqueName} {npc.Tile.X} {npc.Tile.Y} {npc.FacingDirection}/";
                 }
 
                 if (!tempSche.Any()) return false;
@@ -110,11 +119,22 @@ namespace MarketTown.Framework.Services
             }
             catch (Exception ex)
             {
-                // Log but don't crash — this is a best-effort operation
-                // The caller can log this if needed
                 _ = ex;
                 return false;
             }
+        }
+
+        /// <summary>
+        /// Injects a single schedule destination for the NPC at the next 10-minute game tick,
+        /// preserving their existing schedule and current movement state.
+        /// </summary>
+        public static bool AddNewPointToSchedule(NPC npc, string addTime, string locationName, string x, string y, string facingDir)
+        {
+            var singleStop = new List<(string locationName, Microsoft.Xna.Framework.Vector2 standTile, int facing, int scheduledTime)>
+            {
+                (locationName, new Microsoft.Xna.Framework.Vector2(float.Parse(x), float.Parse(y)), int.Parse(facingDir), int.Parse(addTime))
+            };
+            return AddNewPointsToSchedule(npc, singleStop);
         }
 
         /// <summary>

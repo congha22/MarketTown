@@ -15,6 +15,8 @@ namespace MarketTown.Framework.Config
         
         public float RestockChance { get; set; } = 0.5f;
         public RestockRule RestockMinimumRule { get; set; } = RestockRule.Random;
+
+        public StardewModdingAPI.SButton OpenSalesMenuKey { get; set; } = StardewModdingAPI.SButton.H;
     }
 
     public enum RestockRule

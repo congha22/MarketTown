@@ -85,7 +85,7 @@ namespace MarketTown.Framework.Services
                 seller.stats.ItemsShipped += 1;
                 Game1.stats.checkForShippingAchievements();
 
-                _salesTrackingService.RecordSale(npc, evaluatedItem, sellPrice, targetObject.Location);
+                _salesTrackingService.RecordSale(npc, evaluatedItem, sellPrice, targetObject.Location, taste);
 
                 Game1.playSound("purchase");
                 Game1.chatBox.addInfoMessage($"Sold {evaluatedItem.DisplayName} to {npc.Name} for {sellPrice}g with base of {basePrice}");

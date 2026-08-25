@@ -27,7 +27,7 @@ namespace MarketTown.Framework.Services
         /// <summary>The object categories that NPCs are interested in browsing (from original mod).</summary>
         private static readonly HashSet<int> _validItemCategories = new HashSet<int>
         {
-            -81, -80, -79, -75, -74, -28, -27, -26, -23, -22, -21, -20, -19, -18, -17, -16, -15, -12, -8, -7, -6, -5, -4, -2
+            -102, -81, -80, -79, -75, -74, -28, -27, -26, -23, -22, -21, -20, -19, -18, -17, -16, -15, -12, -8, -7, -6, -5, -4, -2
         };
 
         /// <summary>Tracks active table stops that NPCs are currently browsing.</summary>

@@ -17,6 +17,9 @@ namespace MarketTown.Framework.Services
         private MarketTownSaveData _saveData;
         private readonly List<SaleRecord> _todaySales = new List<SaleRecord>();
 
+        public MarketTownSaveData SaveData => _saveData;
+        public IReadOnlyList<SaleRecord> TodaySales => _todaySales;
+
         public SalesTrackingService(IMonitor monitor, IModHelper helper)
         {
             _monitor = monitor;
@@ -26,7 +29,7 @@ namespace MarketTown.Framework.Services
             _helper.Events.GameLoop.DayEnding += OnDayEnding;
         }
 
-        public void RecordSale(NPC buyer, Item item, int price, GameLocation location)
+        public void RecordSale(NPC buyer, Item item, int price, GameLocation location, int taste)
         {
             if (_saveData == null) return;
 
@@ -34,9 +37,10 @@ namespace MarketTown.Framework.Services
             var record = new SaleRecord
             {
                 BuyerName = buyer.Name,
-                ItemId = item.ItemId,
+                QualifiedItemId = item.QualifiedItemId,
                 ItemName = item.Name,
                 Quality = item.Quality,
+                GiftTaste = taste,
                 SoldPrice = price,
                 LocationName = location?.NameOrUniqueName ?? "Unknown",
                 TimeOfDay = Game1.timeOfDay
@@ -44,10 +48,10 @@ namespace MarketTown.Framework.Services
             _todaySales.Add(record);
 
             // 2. Update Item Stats
-            if (!_saveData.ItemStats.TryGetValue(item.ItemId, out var itemStats))
+            if (!_saveData.ItemStats.TryGetValue(item.QualifiedItemId, out var itemStats))
             {
                 itemStats = new ItemSaleStats();
-                _saveData.ItemStats[item.ItemId] = itemStats;
+                _saveData.ItemStats[item.QualifiedItemId] = itemStats;
             }
 
             itemStats.TotalSold++;
@@ -70,6 +74,25 @@ namespace MarketTown.Framework.Services
 
             catStats.TotalSold++;
             catStats.TotalEarnings += price;
+
+            // 4. Update Customer Stats
+            if (!_saveData.CustomerStats.TryGetValue(buyer.Name, out var customerStats))
+            {
+                customerStats = new CustomerSaleStats();
+                _saveData.CustomerStats[buyer.Name] = customerStats;
+            }
+
+            customerStats.TotalPurchased++;
+            customerStats.TotalSpent += price;
+
+            switch (taste)
+            {
+                case NPC.gift_taste_love: customerStats.TotalLove++; break;
+                case NPC.gift_taste_like: customerStats.TotalLike++; break;
+                case NPC.gift_taste_neutral: customerStats.TotalNeutral++; break;
+                case NPC.gift_taste_dislike: customerStats.TotalDislike++; break;
+                case NPC.gift_taste_hate: customerStats.TotalHate++; break;
+            }
         }
 
         private void OnSaveLoaded(object sender, SaveLoadedEventArgs e)

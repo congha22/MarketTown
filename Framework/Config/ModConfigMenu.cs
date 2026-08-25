@@ -128,6 +128,14 @@ namespace MarketTown.Framework.Config
                 setValue: value => config.RestockMinimumRule = (RestockRule)System.Enum.Parse(typeof(RestockRule), value),
                 allowedValues: System.Enum.GetNames(typeof(RestockRule))
             );
+
+            configMenu.AddKeybind(
+                mod: manifest,
+                name: () => "Open Sales Menu Key",
+                tooltip: () => "The key to press to open the Market Town sales tracking menu.",
+                getValue: () => config.OpenSalesMenuKey,
+                setValue: value => config.OpenSalesMenuKey = value
+            );
         }
     }
 }

@@ -177,10 +177,10 @@ namespace MarketTown.Framework.Services
                         reactionEmote = taste switch
                         {
                             NPC.gift_taste_love => 20,       // Heart
-                            NPC.gift_taste_like => 32,       // Happy
+                            NPC.gift_taste_like => 56,       // Note
                             NPC.gift_taste_dislike => Game1.random.NextDouble() < 0.5 ? 4 : 12, // Speech question or Angry
                             NPC.gift_taste_hate => 36,       // X mark
-                            _ => 56                          // Music note (Neutral)
+                            _ => 32                          // Happy (Neutral)
                         };
 
                         bool bought = _salesService.TryProcessPurchase(npc, target.TargetObject, evaluatedItem, taste);

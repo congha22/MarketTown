@@ -180,10 +180,10 @@ namespace MarketTown.Framework.UI
                 int emoteIndex = sale.GiftTaste switch
                 {
                     NPC.gift_taste_love => 20,
-                    NPC.gift_taste_like => 32,
+                    NPC.gift_taste_like => 56,
                     NPC.gift_taste_dislike => 4,
                     NPC.gift_taste_hate => 36,
-                    _ => 56
+                    _ => 32
                 };
                 Rectangle emoteSource = new Rectangle((emoteIndex % 4) * 16, (emoteIndex / 4) * 16, 16, 16);
                 b.Draw(Game1.emoteSpriteSheet, new Rectangle(cell.X + 50, cell.Y + 10, 32, 32), emoteSource, Color.White);
@@ -222,10 +222,10 @@ namespace MarketTown.Framework.UI
             int emoteIndex = taste switch
             {
                 NPC.gift_taste_love => 20,
-                NPC.gift_taste_like => 32,
+                NPC.gift_taste_like => 56,
                 NPC.gift_taste_dislike => 4,
                 NPC.gift_taste_hate => 36,
-                _ => 56 // Neutral
+                _ => 32 // Neutral
             };
             Rectangle emoteSource = new Rectangle((emoteIndex % 4) * 16, (emoteIndex / 4) * 16, 16, 16);
             b.Draw(Game1.emoteSpriteSheet, new Rectangle(x, y, 24, 24), emoteSource, Color.White);

@@ -25,7 +25,7 @@ namespace MarketTown.Framework.Services
         private Dictionary<string, int> _npcScanCooldowns = new Dictionary<string, int>();
 
         /// <summary>The object categories that NPCs are interested in browsing (from original mod).</summary>
-        private static readonly HashSet<int> _validItemCategories = new HashSet<int>
+        public static readonly HashSet<int> ValidItemCategories = new HashSet<int>
         {
             -102, -81, -80, -79, -75, -74, -28, -27, -26, -23, -22, -21, -20, -19, -18, -17, -16, -15, -12, -8, -7, -6, -5, -4, -2
         };
@@ -173,18 +173,28 @@ namespace MarketTown.Framework.Services
 
                     if (evaluatedItem != null)
                     {
-                        int taste = npc.getGiftTasteForThisItem(evaluatedItem);
-                        reactionEmote = taste switch
-                        {
-                            NPC.gift_taste_love => 20,       // Heart
-                            NPC.gift_taste_like => 56,       // Note
-                            NPC.gift_taste_dislike => Game1.random.NextDouble() < 0.5 ? 4 : 12, // Speech question or Angry
-                            NPC.gift_taste_hate => 36,       // X mark
-                            _ => 32                          // Happy (Neutral)
-                        };
+                        bool isInvalidObject = evaluatedItem is StardewValley.Object && !ValidItemCategories.Contains(evaluatedItem.Category);
 
-                        bool bought = _salesService.TryProcessPurchase(npc, target.TargetObject, evaluatedItem, taste);
-                        // Do not override the taste emote when they buy it
+                        if (isInvalidObject)
+                        {
+                            reactionEmote = 60; // Empty/Question
+                            _monitor.Log($"{npc.Name} evaluated item but found invalid category -> reacted with emote {reactionEmote}.", LogLevel.Debug);
+                        }
+                        else
+                        {
+                            int taste = npc.getGiftTasteForThisItem(evaluatedItem);
+                            reactionEmote = taste switch
+                            {
+                                NPC.gift_taste_love => 20,       // Heart
+                                NPC.gift_taste_like => 56,       // Note
+                                NPC.gift_taste_dislike => Game1.random.NextDouble() < 0.5 ? 4 : 12, // Speech question or Angry
+                                NPC.gift_taste_hate => 36,       // X mark
+                                _ => 32                          // Happy (Neutral)
+                            };
+
+                            bool bought = _salesService.TryProcessPurchase(npc, target.TargetObject, evaluatedItem, taste);
+                            // Do not override the taste emote when they buy it
+                        }
                     }
                     else
                     {
@@ -231,7 +241,7 @@ namespace MarketTown.Framework.Services
             {
                 if (furniture.furniture_type.Value == Furniture.table && furniture.heldObject.Value != null)
                 {
-                    if (_validItemCategories.Contains(furniture.heldObject.Value.Category))
+                    if (ValidItemCategories.Contains(furniture.heldObject.Value.Category))
                     {
                         float distance = Utility.distance(npc.TilePoint.X, furniture.TileLocation.X, npc.TilePoint.Y, furniture.TileLocation.Y);
                         if (distance <= _config.NpcScanRange)
@@ -291,7 +301,7 @@ namespace MarketTown.Framework.Services
             {
                 if (f != null && f != initialTarget && f.furniture_type.Value == Furniture.table && f.heldObject.Value != null)
                 {
-                    if (_validItemCategories.Contains(f.heldObject.Value.Category))
+                    if (ValidItemCategories.Contains(f.heldObject.Value.Category))
                     {
                         float dist = Microsoft.Xna.Framework.Vector2.Distance(f.TileLocation, initialTarget.TileLocation);
                         if (dist <= _config.NpcBrowseRange)

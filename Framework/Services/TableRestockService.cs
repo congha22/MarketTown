@@ -214,6 +214,9 @@ namespace MarketTown.Framework.Services
                     if (item == null || !(item is StardewValley.Object objItem))
                         continue;
 
+                    if (!NpcScannerService.ValidItemCategories.Contains(objItem.Category))
+                        continue;
+
                     int score = 1;
 
                     if (soldItem != null)

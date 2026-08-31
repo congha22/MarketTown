@@ -36,11 +36,11 @@ namespace MarketTown
 
             // Initialize services
             _mapPathfindingService = new MapPathfindingService(this.Monitor, this.Config, this.Helper);
-            
+
             var tableRestockService = new TableRestockService(this.Monitor, this.Config, this.Helper);
             _salesTrackingService = new SalesTrackingService(this.Monitor, this.Helper);
             var salesService = new NpcSalesService(this.Monitor, this.Config, tableRestockService, _salesTrackingService);
-            
+
             _npcScannerService = new NpcScannerService(this.Monitor, this.Config, this.Helper, salesService, _mapPathfindingService);
 
             // Register GMCM

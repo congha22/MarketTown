@@ -88,7 +88,7 @@ namespace MarketTown.Framework.Services
                 _salesTrackingService.RecordSale(npc, evaluatedItem, sellPrice, targetObject.Location, taste);
 
                 Game1.playSound("purchase");
-                Game1.chatBox.addInfoMessage($"Sold {evaluatedItem.DisplayName} to {npc.Name} for {sellPrice}g with base of {basePrice}");
+                Game1.chatBox.addInfoMessage($"Sold {evaluatedItem.DisplayName} to {npc.displayName ?? npc.Name} for {sellPrice}g with base of {basePrice}");
 
                 // Remove item from target
                 if (targetObject is Furniture f)

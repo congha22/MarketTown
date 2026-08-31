@@ -61,7 +61,22 @@ namespace MarketTown.Framework.Services
             _pathfindingService = pathfindingService;
 
             _helper.Events.GameLoop.DayStarted += OnDayStarted;
+            _helper.Events.GameLoop.TimeChanged += OnTimeChanged;
             _helper.Events.GameLoop.UpdateTicked += OnUpdateTicked;
+        }
+
+        /// <summary>Checks whether an NPC is allowed to scan, browse, and purchase items.</summary>
+        public static bool IsAllowedCustomer(NPC npc)
+        {
+            if (npc == null) return false;
+
+            // Allow standard sociable villagers
+            if (npc.IsVillager && npc.CanSocialize) return true;
+
+            // Allow custom CAS NPCs (Create A Stardewie) whose name/ID starts with "d5a1lamdtd.cas.npc"
+            if (!string.IsNullOrEmpty(npc.Name) && npc.Name.StartsWith("d5a1lamdtd.cas.npc", StringComparison.OrdinalIgnoreCase)) return true;
+
+            return false;
         }
 
         private void OnDayStarted(object sender, DayStartedEventArgs e)
@@ -71,10 +86,27 @@ namespace MarketTown.Framework.Services
             _npcScanCooldowns.Clear();
             _activeBrowsingTargets.Clear();
 
-            // Cache all sociable villagers
+            RefreshCachedNpcs();
+        }
+
+        private void OnTimeChanged(object sender, TimeChangedEventArgs e)
+        {
+            // Dynamically register any new NPCs spawned mid-day (e.g. CAS visitors)
             foreach (var npc in Utility.getAllCharacters())
             {
-                if (npc.IsVillager && npc.CanSocialize)
+                if (IsAllowedCustomer(npc) && !_cachedNpcs.Contains(npc))
+                {
+                    _cachedNpcs.Add(npc);
+                }
+            }
+        }
+
+        private void RefreshCachedNpcs()
+        {
+            _cachedNpcs.Clear();
+            foreach (var npc in Utility.getAllCharacters())
+            {
+                if (IsAllowedCustomer(npc))
                 {
                     _cachedNpcs.Add(npc);
                 }

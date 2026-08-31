@@ -48,8 +48,9 @@ namespace MarketTown.Framework.Config
                 tooltip: () => "How many in-game minutes an NPC will wait before scanning again after finding an item.",
                 getValue: () => config.NpcScanCooldownMinutes,
                 setValue: value => config.NpcScanCooldownMinutes = value,
-                min: 10,
-                max: 1440
+                min: 30,
+                max: 600,
+                interval: 10
             );
 
             configMenu.AddNumberOption(

@@ -18,6 +18,7 @@ namespace MarketTown
         private NpcScannerService _npcScannerService;
         private SalesTrackingService _salesTrackingService;
         private IndoorStoreTrackingService _indoorStoreTrackingService;
+        private StoreStatsService _storeStatsService;
 
         /// <summary>The mod entry point, called after the mod is first loaded.</summary>
         /// <param name="helper">Provides simplified APIs for writing mods.</param>
@@ -40,10 +41,13 @@ namespace MarketTown
 
             var tableRestockService = new TableRestockService(this.Monitor, this.Config, this.Helper);
             _salesTrackingService = new SalesTrackingService(this.Monitor, this.Helper);
-            var salesService = new NpcSalesService(this.Monitor, this.Config, tableRestockService, _salesTrackingService);
-
+            
             _indoorStoreTrackingService = new IndoorStoreTrackingService(this.Monitor, this.Helper, _salesTrackingService);
-            var indoorVisitorService = new IndoorVisitorService(this.Monitor, this.Helper, this.Config, _indoorStoreTrackingService);
+            _storeStatsService = new StoreStatsService(this.Monitor, this.Helper, _indoorStoreTrackingService);
+
+            var salesService = new NpcSalesService(this.Monitor, this.Config, tableRestockService, _salesTrackingService, _storeStatsService);
+
+            var indoorVisitorService = new IndoorVisitorService(this.Monitor, this.Helper, this.Config, _indoorStoreTrackingService, _storeStatsService);
 
             _npcScannerService = new NpcScannerService(this.Monitor, this.Config, this.Helper, salesService, _indoorStoreTrackingService, indoorVisitorService, _mapPathfindingService);
 

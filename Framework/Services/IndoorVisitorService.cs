@@ -15,6 +15,7 @@ namespace MarketTown.Framework.Services
         private readonly IModHelper _helper;
         private readonly ModConfig _config;
         private readonly IndoorStoreTrackingService _storeTrackingService;
+        private readonly StoreStatsService _storeStatsService;
 
         public class VisitorData
         {
@@ -29,12 +30,13 @@ namespace MarketTown.Framework.Services
 
         private int _wanderCheckIndex = 0;
 
-        public IndoorVisitorService(IMonitor monitor, IModHelper helper, ModConfig config, IndoorStoreTrackingService storeTrackingService)
+        public IndoorVisitorService(IMonitor monitor, IModHelper helper, ModConfig config, IndoorStoreTrackingService storeTrackingService, StoreStatsService storeStatsService)
         {
             _monitor = monitor;
             _helper = helper;
             _config = config;
             _storeTrackingService = storeTrackingService;
+            _storeStatsService = storeStatsService;
 
             helper.Events.GameLoop.DayStarted += OnDayStarted;
             helper.Events.GameLoop.TimeChanged += OnTimeChanged;
@@ -298,6 +300,8 @@ namespace MarketTown.Framework.Services
                 SpawnTile = spawnTile,
                 IsDeparting = false
             };
+
+            _storeStatsService.IncrementVisitor(location);
 
             _monitor.Log($"Spawned visitor {visitor.Name} at {location.NameOrUniqueName}. They will leave at {departureTime}.", LogLevel.Info);
         }

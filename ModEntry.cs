@@ -17,6 +17,7 @@ namespace MarketTown
         private MapPathfindingService _mapPathfindingService;
         private NpcScannerService _npcScannerService;
         private SalesTrackingService _salesTrackingService;
+        private IndoorStoreTrackingService _indoorStoreTrackingService;
 
         /// <summary>The mod entry point, called after the mod is first loaded.</summary>
         /// <param name="helper">Provides simplified APIs for writing mods.</param>
@@ -42,6 +43,8 @@ namespace MarketTown
             var salesService = new NpcSalesService(this.Monitor, this.Config, tableRestockService, _salesTrackingService);
 
             _npcScannerService = new NpcScannerService(this.Monitor, this.Config, this.Helper, salesService, _mapPathfindingService);
+
+            _indoorStoreTrackingService = new IndoorStoreTrackingService(this.Monitor, this.Helper, _salesTrackingService);
 
             // Register GMCM
             ModConfigMenu.Register(this.Helper, this.ModManifest, this.Config);

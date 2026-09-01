@@ -16,7 +16,10 @@ namespace MarketTown.Framework.Services
         private readonly ModConfig _config;
         private readonly IModHelper _helper;
         private readonly NpcSalesService _salesService;
+        private readonly IndoorVisitorService _indoorVisitorService;
         private readonly MapPathfindingService _pathfindingService;
+
+        private readonly IndoorStoreTrackingService _storeTrackingService;
 
         private List<NPC> _cachedNpcs = new List<NPC>();
         private int _npcScanIndex = 0;
@@ -52,12 +55,14 @@ namespace MarketTown.Framework.Services
             public bool HasReacted { get; set; }
         }
 
-        public NpcScannerService(IMonitor monitor, ModConfig config, IModHelper helper, NpcSalesService salesService, MapPathfindingService pathfindingService = null)
+        public NpcScannerService(IMonitor monitor, ModConfig config, IModHelper helper, NpcSalesService salesService, IndoorStoreTrackingService storeTrackingService, IndoorVisitorService indoorVisitorService, MapPathfindingService pathfindingService = null)
         {
             _monitor = monitor;
             _config = config;
             _helper = helper;
             _salesService = salesService;
+            _storeTrackingService = storeTrackingService;
+            _indoorVisitorService = indoorVisitorService;
             _pathfindingService = pathfindingService;
 
             _helper.Events.GameLoop.DayStarted += OnDayStarted;
@@ -256,10 +261,12 @@ namespace MarketTown.Framework.Services
             if (npc.currentLocation == null)
                 return;
 
-            bool isOutdoor = npc.currentLocation.IsOutdoors;
-            bool hasIndoorLicense = false;
+            if (_indoorVisitorService.IsVisitorDeparting(npc))
+                return;
 
-            // TODO: In the future, check if npc.currentLocation has a Store License placed inside
+            bool isOutdoor = npc.currentLocation.IsOutdoors;
+            bool hasIndoorLicense = _storeTrackingService.ActiveStoreLocations.Contains(npc.currentLocation);
+
             if (!isOutdoor && !hasIndoorLicense)
             {
                 return;
@@ -276,7 +283,7 @@ namespace MarketTown.Framework.Services
                     if (ValidItemCategories.Contains(furniture.heldObject.Value.Category))
                     {
                         float distance = Utility.distance(npc.TilePoint.X, furniture.TileLocation.X, npc.TilePoint.Y, furniture.TileLocation.Y);
-                        if (distance <= _config.NpcScanRange)
+                        if (!isOutdoor || distance <= _config.NpcScanRange)
                         {
                             validTargets.Add(furniture);
                         }
@@ -292,7 +299,7 @@ namespace MarketTown.Framework.Services
                     if (mannequin.hat.Value != null || mannequin.shirt.Value != null || mannequin.pants.Value != null || mannequin.boots.Value != null)
                     {
                         float distance = Utility.distance(npc.TilePoint.X, obj.TileLocation.X, npc.TilePoint.Y, obj.TileLocation.Y);
-                        if (distance <= _config.NpcScanRange)
+                        if (!isOutdoor || distance <= _config.NpcScanRange)
                         {
                             validTargets.Add(obj);
                         }
@@ -315,7 +322,7 @@ namespace MarketTown.Framework.Services
                     _npcScanCooldowns[npc.Name] = currentTotalMinutes + _config.NpcScanCooldownMinutes;
 
                     // Send the NPC toward the selected target and any nearby browse targets
-                    SendNpcToBrowse(npc, selectedTarget);
+                    SendNpcToBrowse(npc, selectedTarget, isOutdoor);
                 }
             }
         }
@@ -323,7 +330,7 @@ namespace MarketTown.Framework.Services
         /// <summary>
         /// Finds the initial target and 0 to 2 nearby targets, and injects sequential schedule stops.
         /// </summary>
-        private void SendNpcToBrowse(NPC npc, StardewValley.Object initialTarget)
+        private void SendNpcToBrowse(NPC npc, StardewValley.Object initialTarget, bool isOutdoor)
         {
             // Find other valid targets within browse range of the initial target
             var nearbyTargets = new List<StardewValley.Object>();
@@ -336,7 +343,7 @@ namespace MarketTown.Framework.Services
                     if (ValidItemCategories.Contains(f.heldObject.Value.Category))
                     {
                         float dist = Microsoft.Xna.Framework.Vector2.Distance(f.TileLocation, initialTarget.TileLocation);
-                        if (dist <= _config.NpcBrowseRange)
+                        if (!isOutdoor || dist <= _config.NpcBrowseRange)
                         {
                             nearbyTargets.Add(f);
                         }
@@ -352,7 +359,7 @@ namespace MarketTown.Framework.Services
                     if (mannequin.hat.Value != null || mannequin.shirt.Value != null || mannequin.pants.Value != null || mannequin.boots.Value != null)
                     {
                         float dist = Microsoft.Xna.Framework.Vector2.Distance(obj.TileLocation, initialTarget.TileLocation);
-                        if (dist <= _config.NpcBrowseRange)
+                        if (!isOutdoor || dist <= _config.NpcBrowseRange)
                         {
                             nearbyTargets.Add(obj);
                         }

@@ -42,9 +42,10 @@ namespace MarketTown
             _salesTrackingService = new SalesTrackingService(this.Monitor, this.Helper);
             var salesService = new NpcSalesService(this.Monitor, this.Config, tableRestockService, _salesTrackingService);
 
-            _npcScannerService = new NpcScannerService(this.Monitor, this.Config, this.Helper, salesService, _mapPathfindingService);
-
             _indoorStoreTrackingService = new IndoorStoreTrackingService(this.Monitor, this.Helper, _salesTrackingService);
+            var indoorVisitorService = new IndoorVisitorService(this.Monitor, this.Helper, this.Config, _indoorStoreTrackingService);
+
+            _npcScannerService = new NpcScannerService(this.Monitor, this.Config, this.Helper, salesService, _indoorStoreTrackingService, indoorVisitorService, _mapPathfindingService);
 
             // Register GMCM
             ModConfigMenu.Register(this.Helper, this.ModManifest, this.Config);

@@ -23,6 +23,8 @@ namespace MarketTown.Framework.Config
                     config.NpcBrowseRange = 5;
                     config.MaxExtraBrowseTables = 2;
                     config.PreventWalkingThroughFurniture = true;
+                    config.IndoorStoreVisitorChance = 0.05f;
+                    config.IndoorStoreVisitorStayTime = 120;
                     config.BaseBuyChance = 0.5f;
                     config.PriceMultiplier = 1.5f;
                     config.RestockChance = 0.5f;
@@ -89,6 +91,27 @@ namespace MarketTown.Framework.Config
                 tooltip: () => "When enabled, dynamically sets NoPath map tile properties so NPC pathfinding routes around placed tables and obstacles.",
                 getValue: () => config.PreventWalkingThroughFurniture,
                 setValue: value => config.PreventWalkingThroughFurniture = value
+            );
+
+            configMenu.AddNumberOption(
+                mod: manifest,
+                name: () => "Indoor Store Visitor Chance",
+                tooltip: () => "The chance (0.0 to 1.0) per second that a visitor will spawn in an indoor store.",
+                getValue: () => config.IndoorStoreVisitorChance,
+                setValue: value => config.IndoorStoreVisitorChance = value,
+                min: 0.01f,
+                max: 1.0f
+            );
+
+            configMenu.AddNumberOption(
+                mod: manifest,
+                name: () => "Indoor Store Visitor Stay Time",
+                tooltip: () => "How many in-game minutes an indoor visitor will stay in the shop before leaving.",
+                getValue: () => config.IndoorStoreVisitorStayTime,
+                setValue: value => config.IndoorStoreVisitorStayTime = value,
+                min: 10,
+                max: 1200,
+                interval: 10
             );
 
             configMenu.AddNumberOption(

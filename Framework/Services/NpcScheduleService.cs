@@ -99,7 +99,7 @@ namespace MarketTown.Framework.Services
                 else
                 {
                     // -----------------------------------------------------------------------
-                    // SCENARIO 3: NPC has no schedule — anchor, inject stops, return to anchor
+                    // SCENARIO 3: NPC has no schedule — anchor, inject stops
                     // -----------------------------------------------------------------------
 
                     // Anchor at current position
@@ -112,10 +112,6 @@ namespace MarketTown.Framework.Services
                         string stopKey = stop.scheduledTime.ToString();
                         tempSche[stop.scheduledTime] = $"{stopKey} {stop.locationName} {(int)stop.standTile.X} {(int)stop.standTile.Y} {stop.facing}/";
                     }
-
-                    // Return to their current position afterward
-                    tempSche[resumeTime] =
-                        $"{resumeTime} {npc.currentLocation.NameOrUniqueName} {npc.Tile.X} {npc.Tile.Y} {npc.FacingDirection}/";
                 }
 
                 if (!tempSche.Any()) return false;

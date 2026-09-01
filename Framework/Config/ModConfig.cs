@@ -10,6 +10,9 @@ namespace MarketTown.Framework.Config
         public int MaxExtraBrowseTables { get; set; } = 2;
         public bool PreventWalkingThroughFurniture { get; set; } = true;
         
+        public float IndoorStoreVisitorChance { get; set; } = 0.05f;
+        public int IndoorStoreVisitorStayTime { get; set; } = 120;
+
         public float BaseBuyChance { get; set; } = 0.5f;
         public float PriceMultiplier { get; set; } = 1.5f;
         

@@ -70,6 +70,9 @@ namespace MarketTown.Framework.Services
             }
         }
 
+        public StoreStatsService StoreStatsService { get; set; }
+        public IndoorVisitorService VisitorService { get; set; }
+
         private void OnButtonPressed(object sender, ButtonPressedEventArgs e)
         {
             if (!Context.IsWorldReady || Game1.activeClickableMenu != null) return;
@@ -81,9 +84,11 @@ namespace MarketTown.Framework.Services
                 {
                     if (obj.bigCraftable.Value && obj.ItemId == REGISTER_ID)
                     {
-                        // Open the Shop Manager Menu
-                        Game1.activeClickableMenu = new SalesMenu(_salesTrackingService, _helper);
-                        _helper.Input.Suppress(e.Button);
+                        if (StoreStatsService != null && VisitorService != null)
+                        {
+                            Game1.activeClickableMenu = new StoreManagerMenu(StoreStatsService, VisitorService, Game1.currentLocation, _helper);
+                            _helper.Input.Suppress(e.Button);
+                        }
                     }
                 }
             }

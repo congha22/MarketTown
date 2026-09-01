@@ -6,6 +6,7 @@ using StardewModdingAPI;
 using StardewModdingAPI.Events;
 using StardewValley;
 using MarketTown.Framework.Config;
+using MarketTown.Framework.Models;
 
 namespace MarketTown.Framework.Services
 {
@@ -186,8 +187,14 @@ namespace MarketTown.Framework.Services
 
         private int CalculateStoreCapacity(GameLocation location)
         {
+            var scores = GetStoreScores(location);
+            return scores.MaxCapacity;
+        }
+
+        public StoreCapacityScores GetStoreScores(GameLocation location)
+        {
             if (location.Map == null || location.Map.Layers.Count == 0)
-                return 2;
+                return new StoreCapacityScores { MaxCapacity = 2 };
 
             int area = location.Map.Layers[0].LayerWidth * location.Map.Layers[0].LayerHeight;
 
@@ -199,16 +206,31 @@ namespace MarketTown.Framework.Services
             int numDecorations = stats.Decorations;
 
             // Calculate ratios
-            float levelRatio = Math.Min(1.0f, (GetShopLevel(location) - 1) / 4.0f); // Level 1 -> 0, Level 5 -> 1.0
+            int shopLevel = GetShopLevel(location);
+            float levelRatio = Math.Min(1.0f, (shopLevel - 1) / 4.0f); // Level 1 -> 0, Level 5 -> 1.0
             float nodeRatio = Math.Min(1.0f, (numSellingNodes * 15.0f) / area);
             float decoRatio = Math.Min(1.0f, (numDecorations * 20.0f) / area);
 
+            float levelScore = levelRatio * 0.5f;
+            float sellingScore = nodeRatio * 0.3f;
+            float decorationScore = decoRatio * 0.2f;
+
             // Bonus Score (0.0 to 1.0)
-            float bonusScore = (levelRatio * 0.5f) + (nodeRatio * 0.3f) + (decoRatio * 0.2f);
+            float bonusScore = levelScore + sellingScore + decorationScore;
 
             // Calculate final limit
             int maxLimit = baseCapacity + (int)(baseCapacity * bonusScore);
-            return Math.Min(20, maxLimit);
+            maxLimit = Math.Min(20, maxLimit);
+
+            return new StoreCapacityScores
+            {
+                ShopLevel = shopLevel,
+                ShopLevelScore = levelScore,
+                SellingScore = sellingScore,
+                DecorationScore = decorationScore,
+                BonusScore = bonusScore,
+                MaxCapacity = maxLimit
+            };
         }
 
         public (int SellingNodes, int Decorations) GetStoreStatistics(GameLocation location)

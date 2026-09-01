@@ -49,6 +49,9 @@ namespace MarketTown
 
             var indoorVisitorService = new IndoorVisitorService(this.Monitor, this.Helper, this.Config, _indoorStoreTrackingService, _storeStatsService);
 
+            _indoorStoreTrackingService.StoreStatsService = _storeStatsService;
+            _indoorStoreTrackingService.VisitorService = indoorVisitorService;
+
             _npcScannerService = new NpcScannerService(this.Monitor, this.Config, this.Helper, salesService, _indoorStoreTrackingService, indoorVisitorService, _mapPathfindingService);
 
             // Register GMCM

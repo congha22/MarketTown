@@ -10,6 +10,10 @@
       "FromFile": "data/MarketTownStorageLarge.json"
     },
     {
+      "Action": "Include",
+      "FromFile": "data/MarketTownRegister.json"
+    },
+    {
       "LogName": "Load Textures",
       "Action": "Load",
       "Target": "Mods/d5a1lamdtd.MarketTown.Chest/MarketTownStorageSmall,Mods/d5a1lamdtd.MarketTown.Chest/MarketTownStorageLarge",

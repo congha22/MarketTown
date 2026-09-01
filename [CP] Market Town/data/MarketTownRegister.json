@@ -1,0 +1,34 @@
+{
+  "Changes": [
+    {
+      "LogName": "Add Store Register BigCraftable",
+      "Action": "EditData",
+      "Target": "Data/BigCraftables",
+      "Entries": {
+        "d5a1lamdtd.MarketTown_StoreRegister": {
+          "Name": "Store Register",
+          "DisplayName": "Store Register",
+          "Description": "Place this down to open an indoor store.",
+          "Price": 500,
+          "CanBePlacedOutdoors": false,
+          "CanBePlacedIndoors": true,
+          "Texture": "d5a1lamdtd.MarketTown_StoreRegister"
+        }
+      }
+    },
+    {
+      "LogName": "Add Store Register Recipe",
+      "Action": "EditData",
+      "Target": "Data/CraftingRecipes",
+      "Entries": {
+        "d5a1lamdtd.MarketTown_StoreRegister": "709 50 335 10 787 2 645 1/Field/d5a1lamdtd.MarketTown_StoreRegister/true/default/Store Register"
+      }
+    },
+    {
+      "LogName": "Load Store Register Texture",
+      "Action": "Load",
+      "Target": "d5a1lamdtd.MarketTown_StoreRegister",
+      "FromFile": "assets/storeregister.png"
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "Changes": [
+    {
+      "LogName": "Add Large Checkout Counter",
+      "Action": "EditData",
+      "Target": "Data/Furniture",
+      "Entries": {
+        "d5a1lamdtd.MarketTown_CheckoutLarge": "Large Checkout Counter/decor/3 4/3 3/1/999/2/Large Checkout Counter/0/d5a1lamdtd.MarketTown.CheckoutLargeTexture"
+      }
+    },
+    {
+      "LogName": "Load Large Checkout Counter Texture",
+      "Action": "Load",
+      "Target": "d5a1lamdtd.MarketTown.CheckoutLargeTexture",
+      "FromFile": "assets/CheckOutLarge.png"
+    }
+  ]
+}

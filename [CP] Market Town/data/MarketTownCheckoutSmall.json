@@ -1,0 +1,18 @@
+{
+  "Changes": [
+    {
+      "LogName": "Add Small Checkout Counter",
+      "Action": "EditData",
+      "Target": "Data/Furniture",
+      "Entries": {
+        "d5a1lamdtd.MarketTown_CheckoutSmall": "Small Checkout Counter/decor/2 3/2 2/1/999/2/Small Checkout Counter/0/d5a1lamdtd.MarketTown.CheckoutSmallTexture"
+      }
+    },
+    {
+      "LogName": "Load Small Checkout Counter Texture",
+      "Action": "Load",
+      "Target": "d5a1lamdtd.MarketTown.CheckoutSmallTexture",
+      "FromFile": "assets/CheckOutSmall.png"
+    }
+  ]
+}

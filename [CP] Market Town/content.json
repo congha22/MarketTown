@@ -18,6 +18,14 @@
       "Action": "Load",
       "Target": "Mods/d5a1lamdtd.MarketTown.Chest/MarketTownStorageSmall,Mods/d5a1lamdtd.MarketTown.Chest/MarketTownStorageLarge",
       "FromFile": "assets/{{TargetWithoutPath}}.png"
+    },
+    {
+      "Action": "Include",
+      "FromFile": "data/MarketTownCheckoutLarge.json"
+    },
+    {
+      "Action": "Include",
+      "FromFile": "data/MarketTownCheckoutSmall.json"
     }
   ]
 }

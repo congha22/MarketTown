@@ -185,7 +185,7 @@ namespace MarketTown.Framework.Services
                                     PlaceEmployeeAtCheckout(location, checkoutTile, kvp.Value);
                                 }
                             }
-                            else if (Game1.timeOfDay >= stats.CloseHour && Game1.timeOfDay < stats.CloseHour + 100)
+                            else if (Game1.timeOfDay >= stats.CloseHour && Game1.timeOfDay < stats.CloseHour + 200)
                             {
                                 // Walk home once all customers leave
                                 if (npc.controller == null && npc.currentLocation == location)
@@ -215,7 +215,7 @@ namespace MarketTown.Framework.Services
                                     }
                                 }
                             }
-                            else if (Game1.timeOfDay >= stats.CloseHour + 100)
+                            else if (Game1.timeOfDay >= stats.CloseHour + 200)
                             {
                                 // Force leave if they got stuck
                                 if (npc.currentLocation == location)

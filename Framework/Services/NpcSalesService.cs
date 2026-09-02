@@ -1,8 +1,10 @@
 using System;
+using System.Collections.Generic;
 using StardewModdingAPI;
 using StardewValley;
 using StardewValley.Objects;
 using MarketTown.Framework.Config;
+using MarketTown.Framework.Models;
 
 namespace MarketTown.Framework.Services
 {
@@ -14,14 +16,16 @@ namespace MarketTown.Framework.Services
         private readonly TableRestockService _restockService;
         private readonly SalesTrackingService _salesTrackingService;
         private readonly StoreStatsService _storeStatsService;
+        private readonly IndoorVisitorService _indoorVisitorService;
 
-        public NpcSalesService(IMonitor monitor, ModConfig config, TableRestockService restockService, SalesTrackingService salesTrackingService, StoreStatsService storeStatsService)
+        public NpcSalesService(IMonitor monitor, ModConfig config, TableRestockService restockService, SalesTrackingService salesTrackingService, StoreStatsService storeStatsService, IndoorVisitorService indoorVisitorService)
         {
             _monitor = monitor;
             _config = config;
             _restockService = restockService;
             _salesTrackingService = salesTrackingService;
             _storeStatsService = storeStatsService;
+            _indoorVisitorService = indoorVisitorService;
         }
 
         /// <summary>
@@ -80,18 +84,28 @@ namespace MarketTown.Framework.Services
                     }
                 }
 
-                seller.Money += sellPrice;
-                
-                // Track shipping stats
-                seller.shippedBasic(evaluatedItem.ItemId, 1);
-                seller.stats.ItemsShipped += 1;
-                Game1.stats.checkForShippingAchievements();
+                // Check if this is an indoor customer who should put it in their cart instead
+                bool deferred = _indoorVisitorService.TryAddToCart(npc, evaluatedItem, sellPrice, taste, seller);
 
-                _salesTrackingService.RecordSale(npc, evaluatedItem, sellPrice, targetObject.Location, taste);
-                _storeStatsService.RecordSale(targetObject.Location, sellPrice);
+                if (!deferred)
+                {
+                    seller.Money += sellPrice;
+                    
+                    // Track shipping stats
+                    seller.shippedBasic(evaluatedItem.ItemId, 1);
+                    seller.stats.ItemsShipped += 1;
+                    Game1.stats.checkForShippingAchievements();
 
-                Game1.playSound("purchase");
-                Game1.chatBox.addInfoMessage($"Sold {evaluatedItem.DisplayName} to {npc.displayName ?? npc.Name} for {sellPrice}g with base of {basePrice}");
+                    _salesTrackingService.RecordSale(npc, evaluatedItem, sellPrice, targetObject.Location, taste);
+                    _storeStatsService.RecordSale(targetObject.Location, sellPrice);
+
+                    Game1.playSound("purchase");
+                    Game1.chatBox.addInfoMessage($"Sold {evaluatedItem.DisplayName} to {npc.displayName ?? npc.Name} for {sellPrice}g with base of {basePrice}");
+                }
+                else
+                {
+                    _monitor.Log($"{npc.Name} added '{evaluatedItem.DisplayName}' to their shopping cart.", LogLevel.Debug);
+                }
 
                 // Remove item from target
                 if (targetObject is Furniture f)
@@ -113,6 +127,30 @@ namespace MarketTown.Framework.Services
 
             _monitor.Log($"{npc.Name} evaluated '{evaluatedItem.DisplayName}' (Taste: {taste}) but decided not to buy (Chance: {finalChance:P0}).", LogLevel.Debug);
             return false;
+        }
+
+        public void ProcessDeferredPurchases(NPC npc, List<CartItem> cart, GameLocation location)
+        {
+            if (cart == null || cart.Count == 0) return;
+
+            int totalValue = 0;
+            foreach (var item in cart)
+            {
+                item.Seller.Money += item.Price;
+                item.Seller.shippedBasic(item.Item.ItemId, 1);
+                item.Seller.stats.ItemsShipped += 1;
+
+                _salesTrackingService.RecordSale(npc, item.Item, item.Price, location, item.Taste);
+                _storeStatsService.RecordSale(location, item.Price);
+
+                totalValue += item.Price;
+            }
+
+            Game1.stats.checkForShippingAchievements();
+            Game1.playSound("purchase");
+            Game1.chatBox.addInfoMessage($"Sold {cart.Count} items to {npc.displayName ?? npc.Name} for {totalValue}g total.");
+            
+            _monitor.Log($"{npc.Name} checked out with {cart.Count} items for {totalValue}g.", LogLevel.Info);
         }
     }
 }

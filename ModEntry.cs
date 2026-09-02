@@ -22,6 +22,7 @@ namespace MarketTown
         private IndoorStoreTrackingService _indoorStoreTrackingService;
         private StoreStatsService _storeStatsService;
         private StoreEmployeeService _storeEmployeeService;
+        private CheckoutManagerService _checkoutManagerService;
 
         /// <summary>The mod entry point, called after the mod is first loaded.</summary>
         /// <param name="helper">Provides simplified APIs for writing mods.</param>
@@ -59,15 +60,19 @@ namespace MarketTown
             _indoorStoreTrackingService = new IndoorStoreTrackingService(this.Monitor, this.Helper, _salesTrackingService);
             _storeStatsService = new StoreStatsService(this.Monitor, this.Helper, _indoorStoreTrackingService);
 
-            var salesService = new NpcSalesService(this.Monitor, this.Config, tableRestockService, _salesTrackingService, _storeStatsService);
-
             var indoorVisitorService = new IndoorVisitorService(this.Monitor, this.Helper, this.Config, _indoorStoreTrackingService, _storeStatsService);
+
+            var salesService = new NpcSalesService(this.Monitor, this.Config, tableRestockService, _salesTrackingService, _storeStatsService, indoorVisitorService);
 
             _indoorStoreTrackingService.StoreStatsService = _storeStatsService;
             _indoorStoreTrackingService.VisitorService = indoorVisitorService;
             
             _storeEmployeeService = new StoreEmployeeService(this.Monitor, this.Helper, _indoorStoreTrackingService);
             _indoorStoreTrackingService.EmployeeService = _storeEmployeeService;
+            
+            _checkoutManagerService = new CheckoutManagerService(this.Monitor, _storeEmployeeService, this.Helper);
+            indoorVisitorService.CheckoutManager = _checkoutManagerService;
+            indoorVisitorService.SalesService = salesService;
 
             _npcScannerService = new NpcScannerService(this.Monitor, this.Config, this.Helper, salesService, _indoorStoreTrackingService, indoorVisitorService, _mapPathfindingService);
 

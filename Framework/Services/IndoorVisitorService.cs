@@ -267,7 +267,7 @@ namespace MarketTown.Framework.Services
         private void SpawnVisitor(GameLocation location)
         {
             var eligibleNpcs = Utility.getAllCharacters().Where(npc =>
-                NpcScannerService.IsAllowedCustomer(npc) &&
+                NpcScannerService.IsAllowedCustomer(npc, _storeTrackingService) &&
                 !_activeVisitors.ContainsKey(npc) &&
                 npc.currentLocation != location
             ).ToList();

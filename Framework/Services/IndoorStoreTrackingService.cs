@@ -72,6 +72,7 @@ namespace MarketTown.Framework.Services
 
         public StoreStatsService StoreStatsService { get; set; }
         public IndoorVisitorService VisitorService { get; set; }
+        public StoreEmployeeService EmployeeService { get; set; }
 
         private void OnButtonPressed(object sender, ButtonPressedEventArgs e)
         {
@@ -84,9 +85,9 @@ namespace MarketTown.Framework.Services
                 {
                     if (obj.bigCraftable.Value && obj.ItemId == REGISTER_ID)
                     {
-                        if (StoreStatsService != null && VisitorService != null)
+                        if (StoreStatsService != null && VisitorService != null && EmployeeService != null)
                         {
-                            Game1.activeClickableMenu = new StoreManagerMenu(StoreStatsService, VisitorService, Game1.currentLocation, _helper);
+                            Game1.activeClickableMenu = new StoreManagerMenu(StoreStatsService, VisitorService, EmployeeService, Game1.currentLocation, _helper);
                             _helper.Input.Suppress(e.Button);
                         }
                     }

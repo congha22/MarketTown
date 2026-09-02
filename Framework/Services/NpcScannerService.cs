@@ -71,9 +71,12 @@ namespace MarketTown.Framework.Services
         }
 
         /// <summary>Checks whether an NPC is allowed to scan, browse, and purchase items.</summary>
-        public static bool IsAllowedCustomer(NPC npc)
+        public static bool IsAllowedCustomer(NPC npc, IndoorStoreTrackingService storeTrackingService)
         {
             if (npc == null) return false;
+
+            // Block hired employees from being customers
+            if (storeTrackingService?.EmployeeService?.IsEmployee(npc) == true) return false;
 
             // Allow standard sociable villagers
             if (npc.IsVillager && npc.CanSocialize) return true;
@@ -99,7 +102,7 @@ namespace MarketTown.Framework.Services
             // Dynamically register any new NPCs spawned mid-day (e.g. CAS visitors)
             foreach (var npc in Utility.getAllCharacters())
             {
-                if (IsAllowedCustomer(npc) && !_cachedNpcs.Contains(npc))
+                if (IsAllowedCustomer(npc, _storeTrackingService) && !_cachedNpcs.Contains(npc))
                 {
                     _cachedNpcs.Add(npc);
                 }
@@ -111,7 +114,7 @@ namespace MarketTown.Framework.Services
             _cachedNpcs.Clear();
             foreach (var npc in Utility.getAllCharacters())
             {
-                if (IsAllowedCustomer(npc))
+                if (IsAllowedCustomer(npc, _storeTrackingService))
                 {
                     _cachedNpcs.Add(npc);
                 }

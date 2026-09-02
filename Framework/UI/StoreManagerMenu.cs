@@ -1,9 +1,12 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using StardewModdingAPI;
 using StardewValley;
 using StardewValley.Menus;
+using StardewValley.Objects;
 using MarketTown.Framework.Services;
 using MarketTown.Framework.Models;
 
@@ -13,20 +16,25 @@ namespace MarketTown.Framework.UI
     {
         private readonly StoreStatsService _storeStatsService;
         private readonly IndoorVisitorService _visitorService;
+        private readonly StoreEmployeeService _employeeService;
         private readonly GameLocation _location;
         private readonly IModHelper _helper;
 
         private StoreStatRecord _storeStats;
         private StoreCapacityScores _capacityScores;
+        
+        private readonly List<Furniture> _checkouts;
+        private readonly Dictionary<ClickableComponent, Vector2> _hireButtons = new Dictionary<ClickableComponent, Vector2>();
 
-        public StoreManagerMenu(StoreStatsService storeStatsService, IndoorVisitorService visitorService, GameLocation location, IModHelper helper)
+        public StoreManagerMenu(StoreStatsService storeStatsService, IndoorVisitorService visitorService, StoreEmployeeService employeeService, GameLocation location, IModHelper helper)
         {
             _storeStatsService = storeStatsService;
             _visitorService = visitorService;
+            _employeeService = employeeService;
             _location = location;
             _helper = helper;
 
-            this.width = 600;
+            this.width = 800;
             this.height = 600;
 
             this.xPositionOnScreen = Game1.uiViewport.Width / 2 - this.width / 2;
@@ -48,6 +56,18 @@ namespace MarketTown.Framework.UI
             }
 
             _capacityScores = _visitorService.GetStoreScores(_location);
+
+            // Fetch checkouts
+            _checkouts = _location.furniture.Where(f => f.ItemId == "d5a1lamdtd.MarketTown_CheckoutSmall" || f.ItemId == "d5a1lamdtd.MarketTown_CheckoutLarge").ToList();
+            
+            // Create buttons
+            int startY = this.yPositionOnScreen + 160;
+            foreach (var checkout in _checkouts)
+            {
+                var btn = new ClickableComponent(new Rectangle(this.xPositionOnScreen + 500, startY, 150, 40), "HireBtn");
+                _hireButtons[btn] = checkout.TileLocation;
+                startY += 60;
+            }
         }
 
         public override void receiveLeftClick(int x, int y, bool playSound = true)
@@ -57,6 +77,21 @@ namespace MarketTown.Framework.UI
             if (this.upperRightCloseButton != null && this.upperRightCloseButton.containsPoint(x, y))
             {
                 this.exitThisMenu(playSound);
+                return;
+            }
+
+            foreach (var kvp in _hireButtons)
+            {
+                if (kvp.Key.containsPoint(x, y))
+                {
+                    Game1.playSound("drumkit6");
+                    Game1.activeClickableMenu = new EmployeeSelectionMenu(_employeeService, _location, kvp.Value, (hiredNpc) =>
+                    {
+                        // Re-open this menu after hiring
+                        Game1.activeClickableMenu = new StoreManagerMenu(_storeStatsService, _visitorService, _employeeService, _location, _helper);
+                    });
+                    return;
+                }
             }
         }
 
@@ -105,6 +140,35 @@ namespace MarketTown.Framework.UI
             startY += lineHeight;
 
             DrawKeyValue(b, "Max Customers:", _capacityScores.MaxCapacity.ToString(), startX + 20, startY, Color.DarkBlue);
+
+            // Employees Section
+            int rightX = this.xPositionOnScreen + 450;
+            int rightY = this.yPositionOnScreen + 160;
+            
+            if (_checkouts.Count > 0)
+            {
+                foreach (var checkout in _checkouts)
+                {
+                    string type = checkout.ItemId == "d5a1lamdtd.MarketTown_CheckoutSmall" ? "Small" : "Large";
+                    Utility.drawTextWithShadow(b, $"{type} Checkout:", Game1.smallFont, new Vector2(rightX, rightY), Game1.textColor);
+                    
+                    // Find button
+                    var btn = _hireButtons.FirstOrDefault(kvp => kvp.Value == checkout.TileLocation).Key;
+                    if (btn != null)
+                    {
+                        string hiredNpc = _employeeService.GetHiredEmployee(_location, checkout.TileLocation);
+                        string btnText = string.IsNullOrEmpty(hiredNpc) ? "Hire" : hiredNpc;
+                        
+                        bool isHovered = btn.containsPoint(Game1.getMouseX(), Game1.getMouseY());
+                        Color bgColor = isHovered ? Color.Wheat : Color.White;
+                        
+                        IClickableMenu.drawTextureBox(b, Game1.mouseCursors, new Rectangle(384, 396, 15, 15), btn.bounds.X, btn.bounds.Y, btn.bounds.Width, btn.bounds.Height, bgColor, 4f, false);
+                        Utility.drawTextWithShadow(b, btnText, Game1.smallFont, new Vector2(btn.bounds.X + 15, btn.bounds.Y + 5), Game1.textColor);
+                    }
+                    
+                    rightY += 60;
+                }
+            }
 
             this.upperRightCloseButton?.draw(b);
             this.drawMouse(b);

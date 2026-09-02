@@ -21,6 +21,7 @@ namespace MarketTown
         private SalesTrackingService _salesTrackingService;
         private IndoorStoreTrackingService _indoorStoreTrackingService;
         private StoreStatsService _storeStatsService;
+        private StoreEmployeeService _storeEmployeeService;
 
         /// <summary>The mod entry point, called after the mod is first loaded.</summary>
         /// <param name="helper">Provides simplified APIs for writing mods.</param>
@@ -64,6 +65,9 @@ namespace MarketTown
 
             _indoorStoreTrackingService.StoreStatsService = _storeStatsService;
             _indoorStoreTrackingService.VisitorService = indoorVisitorService;
+            
+            _storeEmployeeService = new StoreEmployeeService(this.Monitor, this.Helper, _indoorStoreTrackingService);
+            _indoorStoreTrackingService.EmployeeService = _storeEmployeeService;
 
             _npcScannerService = new NpcScannerService(this.Monitor, this.Config, this.Helper, salesService, _indoorStoreTrackingService, indoorVisitorService, _mapPathfindingService);
 

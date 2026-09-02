@@ -28,9 +28,13 @@ namespace MarketTown.Framework.Services
             public List<CartItem> ShoppingCart { get; set; } = new List<CartItem>();
             public bool IsCheckingOut { get; set; }
             public Furniture AssignedCheckout { get; set; }
-            public Vector2 CheckoutSlot { get; set; }
+            public int CheckoutSlotIndex { get; set; }
             public float CheckoutWaitTimer { get; set; }
             public bool CheckoutSlotReached { get; set; }
+            public bool HasStartedCheckoutEmote { get; set; }
+
+            public float RandomEmoteTimer { get; set; }
+            public float RandomEmoteThreshold { get; set; } = Game1.random.Next(15000, 30000);
         }
 
         private readonly Dictionary<NPC, VisitorData> _activeVisitors = new Dictionary<NPC, VisitorData>();
@@ -108,16 +112,18 @@ namespace MarketTown.Framework.Services
                     }
                     else if (Game1.timeOfDay >= data.DepartureTime && !data.IsDeparting)
                     {
-                        data.IsDeparting = true;
-
                         if (data.ShoppingCart.Count > 0 && CheckoutManager != null)
                         {
-                            if (CheckoutManager.TryReserveSlot(npc.currentLocation, npc, out Vector2 slotTile, out Furniture checkout))
+                            if (CheckoutManager.TryReserveSlot(npc.currentLocation, npc, out int slotIndex, out Furniture checkout))
                             {
+                                data.IsDeparting = true;
                                 data.IsCheckingOut = true;
                                 data.AssignedCheckout = checkout;
-                                data.CheckoutSlot = slotTile;
+                                data.CheckoutSlotIndex = slotIndex;
                                 data.CheckoutSlotReached = false;
+                                data.HasStartedCheckoutEmote = false;
+
+                                Vector2 slotTile = CheckoutManager.GetSlotTile(checkout, slotIndex);
 
                                 NpcScheduleHelper.CleanNpc(npc);
                                 npc.controller = new StardewValley.Pathfinding.PathFindController(npc, npc.currentLocation, new Point((int)slotTile.X, (int)slotTile.Y), -1, new StardewValley.Pathfinding.PathFindController.endBehavior(OnCheckoutSlotReached));
@@ -126,15 +132,32 @@ namespace MarketTown.Framework.Services
                             }
                             else
                             {
-                                // No employee / no checkout available
-                                HandleNoEmployeeDeparture(npc, data, isForced: false);
+                                int closeHour = 2400;
+                                if (npc.currentLocation != null && _storeStatsService.StoreStats.TryGetValue(npc.currentLocation.NameOrUniqueName, out var localStats))
+                                {
+                                    closeHour = localStats.CloseHour;
+                                }
+
+                                if (Game1.timeOfDay < closeHour + 100)
+                                {
+                                    // Wait for a checkout slot to open up
+                                    continue;
+                                }
+                                else
+                                {
+                                    data.IsDeparting = true;
+                                    HandleNoEmployeeDeparture(npc, data, isForced: false);
+                                }
                             }
                         }
-
-                        // Standard departure: Walk back to spawn tile
-                        NpcScheduleHelper.CleanNpc(npc);
-                        npc.controller = new StardewValley.Pathfinding.PathFindController(npc, npc.currentLocation, new Point((int)data.SpawnTile.X, (int)data.SpawnTile.Y), -1, new StardewValley.Pathfinding.PathFindController.endBehavior(OnDepartureWalkFinished));
-                        _monitor.Log($"{npc.Name} is departing {npc.currentLocation.NameOrUniqueName}. Walking to exit...", LogLevel.Trace);
+                        else
+                        {
+                            data.IsDeparting = true;
+                            // Standard departure: Walk back to spawn tile
+                            NpcScheduleHelper.CleanNpc(npc);
+                            npc.controller = new StardewValley.Pathfinding.PathFindController(npc, npc.currentLocation, new Point((int)data.SpawnTile.X, (int)data.SpawnTile.Y), -1, new StardewValley.Pathfinding.PathFindController.endBehavior(OnDepartureWalkFinished));
+                            _monitor.Log($"{npc.Name} is departing {npc.currentLocation.NameOrUniqueName}. Walking to exit...", LogLevel.Trace);
+                        }
                     }
                 }
 
@@ -150,7 +173,7 @@ namespace MarketTown.Framework.Services
 
                         if (data.IsCheckingOut && CheckoutManager != null)
                         {
-                            CheckoutManager.ReleaseSlot(npc.currentLocation, data.AssignedCheckout.TileLocation, data.CheckoutSlot, npc);
+                            CheckoutManager.ReleaseSlot(npc.currentLocation, data.AssignedCheckout.TileLocation, npc);
                         }
                     }
                     _activeVisitors.Remove(npc);
@@ -205,32 +228,75 @@ namespace MarketTown.Framework.Services
                 return;
             }
 
-            if (_activeVisitors.TryGetValue(npc, out var visitorData) && visitorData.IsCheckingOut && visitorData.CheckoutSlotReached)
+            if (_activeVisitors.TryGetValue(npc, out var visitorData) && visitorData.IsCheckingOut)
             {
-                visitorData.CheckoutWaitTimer += 333f; // 20 ticks = approx 333ms
-
-                float requiredWait = visitorData.ShoppingCart.Count * 2000f; // 2 seconds per item
-                if (visitorData.CheckoutWaitTimer >= requiredWait)
+                if (CheckoutManager != null && visitorData.AssignedCheckout != null)
                 {
-                    // Checkout complete
-                    if (SalesService != null)
+                    int currentPos = CheckoutManager.GetQueuePosition(npc.currentLocation, visitorData.AssignedCheckout.TileLocation, npc);
+                    if (currentPos != -1 && currentPos != visitorData.CheckoutSlotIndex)
                     {
-                        SalesService.ProcessDeferredPurchases(npc, visitorData.ShoppingCart, npc.currentLocation);
-                    }
-                    visitorData.ShoppingCart.Clear();
+                        // Moved up in queue
+                        visitorData.CheckoutSlotIndex = currentPos;
+                        visitorData.CheckoutSlotReached = false;
+                        visitorData.HasStartedCheckoutEmote = false;
+                        Vector2 newSlotTile = CheckoutManager.GetSlotTile(visitorData.AssignedCheckout, currentPos);
 
-                    if (CheckoutManager != null)
+                        NpcScheduleHelper.CleanNpc(npc);
+                        npc.controller = new StardewValley.Pathfinding.PathFindController(npc, npc.currentLocation, new Point((int)newSlotTile.X, (int)newSlotTile.Y), -1, new StardewValley.Pathfinding.PathFindController.endBehavior(OnCheckoutSlotReached));
+                        return;
+                    }
+                }
+
+                if (visitorData.CheckoutSlotReached && visitorData.CheckoutSlotIndex == 0)
+                {
+                    if (!visitorData.HasStartedCheckoutEmote)
                     {
-                        CheckoutManager.ReleaseSlot(npc.currentLocation, visitorData.AssignedCheckout.TileLocation, visitorData.CheckoutSlot, npc);
+                        visitorData.HasStartedCheckoutEmote = true;
+                        npc.doEmote(Game1.random.NextDouble() < 0.5 ? 20 : 56);
+
+                        if (_storeTrackingService.EmployeeService != null && visitorData.AssignedCheckout != null)
+                        {
+                            _storeTrackingService.EmployeeService.TriggerCheckoutReaction(npc.currentLocation, visitorData.AssignedCheckout.TileLocation);
+                        }
                     }
 
-                    visitorData.IsCheckingOut = false;
+                    visitorData.CheckoutWaitTimer += 333f; // 20 ticks = approx 333ms
 
-                    // Proceed to exit
-                    NpcScheduleHelper.CleanNpc(npc);
-                    npc.controller = new StardewValley.Pathfinding.PathFindController(npc, npc.currentLocation, new Point((int)visitorData.SpawnTile.X, (int)visitorData.SpawnTile.Y), -1, new StardewValley.Pathfinding.PathFindController.endBehavior(OnDepartureWalkFinished));
+                    float requiredWait = visitorData.ShoppingCart.Count * 1500f; // 1.5 seconds per item
+                    if (visitorData.CheckoutWaitTimer >= requiredWait)
+                    {
+                        // Checkout complete
+                        if (SalesService != null)
+                        {
+                            SalesService.ProcessDeferredPurchases(npc, visitorData.ShoppingCart, npc.currentLocation);
+                        }
+                        visitorData.ShoppingCart.Clear();
+
+                        if (CheckoutManager != null)
+                        {
+                            CheckoutManager.ReleaseSlot(npc.currentLocation, visitorData.AssignedCheckout.TileLocation, npc);
+                        }
+
+                        visitorData.IsCheckingOut = false;
+
+                        // Proceed to exit
+                        NpcScheduleHelper.CleanNpc(npc);
+                        npc.controller = new StardewValley.Pathfinding.PathFindController(npc, npc.currentLocation, new Point((int)visitorData.SpawnTile.X, (int)visitorData.SpawnTile.Y), -1, new StardewValley.Pathfinding.PathFindController.endBehavior(OnDepartureWalkFinished));
+                    }
                 }
                 return;
+            }
+
+            if (_activeVisitors.TryGetValue(npc, out var vData))
+            {
+                vData.RandomEmoteTimer += 333f; // staggered every 20 ticks
+                if (vData.RandomEmoteTimer >= vData.RandomEmoteThreshold)
+                {
+                    vData.RandomEmoteTimer = 0f;
+                    vData.RandomEmoteThreshold = Game1.random.Next(15000, 30000);
+                    int[] emotes = new int[] { 20, 56, 32 };
+                    npc.doEmote(emotes[Game1.random.Next(emotes.Length)]);
+                }
             }
 
             // Check upcoming schedule
@@ -273,7 +339,7 @@ namespace MarketTown.Framework.Services
                 NPC npc = kvp.Key;
                 VisitorData data = kvp.Value;
 
-                if (npc.currentLocation == Game1.currentLocation && data.ShoppingCart.Count > 0)
+                if (npc.currentLocation == Game1.currentLocation && data.ShoppingCart.Count > 0 && !(data.CheckoutSlotReached && data.CheckoutSlotIndex == 0))
                 {
                     string text = data.ShoppingCart.Count.ToString();
                     Vector2 textSize = Game1.smallFont.MeasureString(text);
@@ -478,7 +544,7 @@ namespace MarketTown.Framework.Services
             {
                 data.CheckoutSlotReached = true;
                 data.CheckoutWaitTimer = 0f;
-                npc.faceDirection(3); // Face left towards the register (assuming register is to the left of slot)
+                npc.faceDirection(3); // Face left towards the register
             }
         }
 

@@ -20,6 +20,8 @@ namespace MarketTown.Framework.Services
             public float Timer;
             public int CurrentActionDuration;
             public string Action;
+            public float EmoteTimer;
+            public float EmoteThreshold = Game1.random.Next(15000, 30000);
         }
 
         private readonly IMonitor _monitor;
@@ -262,6 +264,15 @@ namespace MarketTown.Framework.Services
                         _animStates[npc] = state;
                     }
 
+                    state.EmoteTimer += 500f; // 30 ticks = approx 500ms
+                    if (state.EmoteTimer >= state.EmoteThreshold)
+                    {
+                        state.EmoteTimer = 0;
+                        state.EmoteThreshold = Game1.random.Next(15000, 30000);
+                        int[] emotes = new int[] { 20, 56, 32 };
+                        npc.doEmote(emotes[Game1.random.Next(emotes.Length)]);
+                    }
+
                     if (state.Action != "none")
                     {
                         state.Timer += 500f; // 30 ticks = approx 500ms
@@ -313,6 +324,49 @@ namespace MarketTown.Framework.Services
                                 _casApi.TriggerNpcAction(npc, "milking", 1);
                             }
                         }
+                    }
+                }
+            }
+        }
+
+        public void TriggerCheckoutReaction(GameLocation location, Vector2 checkoutTile)
+        {
+            string employeeName = GetHiredEmployee(location, checkoutTile);
+            if (!string.IsNullOrEmpty(employeeName))
+            {
+                NPC employee = Game1.getCharacterFromName(employeeName);
+                if (employee != null && employee.currentLocation == location)
+                {
+                    if (!_animStates.TryGetValue(employee, out var state))
+                    {
+                        state = new EmployeeAnimState { Action = "none" };
+                        _animStates[employee] = state;
+                    }
+
+                    employee.faceDirection(1); // Face right
+                    employee.doEmote(Game1.random.NextDouble() < 0.5 ? 20 : 56);
+
+                    if (_casApi != null)
+                    {
+                        double roll = Game1.random.NextDouble();
+                        if (roll < 0.33)
+                        {
+                            state.Action = "fishing";
+                            _casApi.TriggerNpcAction(employee, "fishing", 1);
+                        }
+                        else if (roll < 0.66)
+                        {
+                            state.Action = "shearing";
+                            _casApi.TriggerNpcAction(employee, "shearing", 1);
+                        }
+                        else
+                        {
+                            state.Action = "milking";
+                            _casApi.TriggerNpcAction(employee, "milking", 1);
+                        }
+
+                        state.CurrentActionDuration = Game1.random.Next(3000, 5000);
+                        state.Timer = 0;
                     }
                 }
             }

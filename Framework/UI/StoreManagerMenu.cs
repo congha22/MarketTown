@@ -26,6 +26,11 @@ namespace MarketTown.Framework.UI
         private readonly List<Furniture> _checkouts;
         private readonly Dictionary<ClickableComponent, Vector2> _hireButtons = new Dictionary<ClickableComponent, Vector2>();
 
+        private ClickableTextureComponent _openLeftArrow;
+        private ClickableTextureComponent _openRightArrow;
+        private ClickableTextureComponent _closeLeftArrow;
+        private ClickableTextureComponent _closeRightArrow;
+
         public StoreManagerMenu(StoreStatsService storeStatsService, IndoorVisitorService visitorService, StoreEmployeeService employeeService, GameLocation location, IModHelper helper)
         {
             _storeStatsService = storeStatsService;
@@ -68,6 +73,15 @@ namespace MarketTown.Framework.UI
                 _hireButtons[btn] = checkout.TileLocation;
                 startY += 60;
             }
+
+            int settingsX = this.xPositionOnScreen + 450;
+            int settingsY = this.yPositionOnScreen + 360;
+            
+            _openLeftArrow = new ClickableTextureComponent(new Rectangle(settingsX + 60, settingsY + 40, 44, 48), Game1.mouseCursors, new Rectangle(352, 495, 12, 11), 4f);
+            _openRightArrow = new ClickableTextureComponent(new Rectangle(settingsX + 170, settingsY + 40, 44, 48), Game1.mouseCursors, new Rectangle(365, 495, 12, 11), 4f);
+
+            _closeLeftArrow = new ClickableTextureComponent(new Rectangle(settingsX + 60, settingsY + 100, 44, 48), Game1.mouseCursors, new Rectangle(352, 495, 12, 11), 4f);
+            _closeRightArrow = new ClickableTextureComponent(new Rectangle(settingsX + 170, settingsY + 100, 44, 48), Game1.mouseCursors, new Rectangle(365, 495, 12, 11), 4f);
         }
 
         public override void receiveLeftClick(int x, int y, bool playSound = true)
@@ -92,6 +106,38 @@ namespace MarketTown.Framework.UI
                     });
                     return;
                 }
+            }
+
+            if (_openLeftArrow.containsPoint(x, y))
+            {
+                Game1.playSound("drumkit6");
+                _storeStats.OpenHour -= 100;
+                if (_storeStats.OpenHour < 600) _storeStats.OpenHour = 600;
+                if (_storeStats.OpenHour > _storeStats.CloseHour - 100) _storeStats.OpenHour = _storeStats.CloseHour - 100;
+                _storeStatsService.UpdateStoreHours(_location, _storeStats.OpenHour, _storeStats.CloseHour);
+            }
+            else if (_openRightArrow.containsPoint(x, y))
+            {
+                Game1.playSound("drumkit6");
+                _storeStats.OpenHour += 100;
+                if (_storeStats.OpenHour > 2400) _storeStats.OpenHour = 2400;
+                if (_storeStats.OpenHour > _storeStats.CloseHour - 100) _storeStats.OpenHour = _storeStats.CloseHour - 100;
+                _storeStatsService.UpdateStoreHours(_location, _storeStats.OpenHour, _storeStats.CloseHour);
+            }
+            else if (_closeLeftArrow.containsPoint(x, y))
+            {
+                Game1.playSound("drumkit6");
+                _storeStats.CloseHour -= 100;
+                if (_storeStats.CloseHour < 600) _storeStats.CloseHour = 600;
+                if (_storeStats.CloseHour < _storeStats.OpenHour + 100) _storeStats.CloseHour = _storeStats.OpenHour + 100;
+                _storeStatsService.UpdateStoreHours(_location, _storeStats.OpenHour, _storeStats.CloseHour);
+            }
+            else if (_closeRightArrow.containsPoint(x, y))
+            {
+                Game1.playSound("drumkit6");
+                _storeStats.CloseHour += 100;
+                if (_storeStats.CloseHour > 2400) _storeStats.CloseHour = 2400;
+                _storeStatsService.UpdateStoreHours(_location, _storeStats.OpenHour, _storeStats.CloseHour);
             }
         }
 
@@ -169,6 +215,27 @@ namespace MarketTown.Framework.UI
                     rightY += 60;
                 }
             }
+
+            int settingsX = this.xPositionOnScreen + 450;
+            int settingsY = this.yPositionOnScreen + 360;
+
+            Utility.drawTextWithShadow(b, "Store Settings:", Game1.smallFont, new Vector2(settingsX, settingsY), Game1.textColor);
+            
+            // Open Hour
+            Utility.drawTextWithShadow(b, "Open:", Game1.smallFont, new Vector2(settingsX, settingsY + 45), Game1.textColor);
+            _openLeftArrow.draw(b);
+            string openTimeStr = Game1.getTimeOfDayString(_storeStats.OpenHour);
+            Vector2 openStrSize = Game1.smallFont.MeasureString(openTimeStr);
+            Utility.drawTextWithShadow(b, openTimeStr, Game1.smallFont, new Vector2(settingsX + 117 - openStrSize.X / 2, settingsY + 45), Game1.textColor);
+            _openRightArrow.draw(b);
+
+            // Close Hour
+            Utility.drawTextWithShadow(b, "Close:", Game1.smallFont, new Vector2(settingsX, settingsY + 105), Game1.textColor);
+            _closeLeftArrow.draw(b);
+            string closeTimeStr = Game1.getTimeOfDayString(_storeStats.CloseHour);
+            Vector2 closeStrSize = Game1.smallFont.MeasureString(closeTimeStr);
+            Utility.drawTextWithShadow(b, closeTimeStr, Game1.smallFont, new Vector2(settingsX + 117 - closeStrSize.X / 2, settingsY + 105), Game1.textColor);
+            _closeRightArrow.draw(b);
 
             this.upperRightCloseButton?.draw(b);
             this.drawMouse(b);

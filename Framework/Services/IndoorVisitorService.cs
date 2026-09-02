@@ -74,10 +74,14 @@ namespace MarketTown.Framework.Services
                     VisitorData data = kvp.Value;
 
                     int forceDepartureTime = NpcScheduleHelper.ConvertToHour(data.DepartureTime + _config.IndoorStoreVisitorStayTime);
+                    if (npc.currentLocation != null && _storeStatsService.StoreStats.TryGetValue(npc.currentLocation.NameOrUniqueName, out var stats))
+                    {
+                        forceDepartureTime = stats.CloseHour + 100;
+                    }
 
                     if (Game1.timeOfDay >= forceDepartureTime)
                     {
-                        // Fallback: Overstayed > 2x time limit. Force remove immediately.
+                        // Force remove if 1 hour past close time
                         forcedDepartures.Add(npc);
                     }
                     else if (Game1.timeOfDay >= data.DepartureTime && !data.IsDeparting)
@@ -101,14 +105,23 @@ namespace MarketTown.Framework.Services
             // 2. Process new spawns
             foreach (var location in _storeTrackingService.ActiveStoreLocations)
             {
-                int currentVisitors = _activeVisitors.Keys.Count(n => n.currentLocation == location);
-                int maxVisitors = GetStoreCapacity(location);
-
-                if (currentVisitors < maxVisitors)
+                if (!_storeStatsService.StoreStats.TryGetValue(location.NameOrUniqueName, out var stats))
                 {
-                    if (Game1.random.NextDouble() <= _config.IndoorStoreVisitorChance)
+                    continue; // Skip if we don't have stats (and thus don't have hours)
+                }
+
+                // Customer only spawn when time > open and < close, not equal
+                if (Game1.timeOfDay > stats.OpenHour && Game1.timeOfDay < stats.CloseHour)
+                {
+                    int currentVisitors = _activeVisitors.Keys.Count(n => n.currentLocation == location);
+                    int maxVisitors = GetStoreCapacity(location);
+
+                    if (currentVisitors < maxVisitors)
                     {
-                        SpawnVisitor(location);
+                        if (Game1.random.NextDouble() <= _config.IndoorStoreVisitorChance)
+                        {
+                            SpawnVisitor(location, stats.CloseHour);
+                        }
                     }
                 }
             }
@@ -264,7 +277,7 @@ namespace MarketTown.Framework.Services
             return (numSellingNodes, numDecorations);
         }
 
-        private void SpawnVisitor(GameLocation location)
+        private void SpawnVisitor(GameLocation location, int closeHour)
         {
             var eligibleNpcs = Utility.getAllCharacters().Where(npc =>
                 NpcScannerService.IsAllowedCustomer(npc, _storeTrackingService) &&
@@ -277,18 +290,7 @@ namespace MarketTown.Framework.Services
 
             var visitor = eligibleNpcs[Game1.random.Next(eligibleNpcs.Count)];
 
-            // Find best entry point
-            if (!_cachedEntryWarps.TryGetValue(location, out Warp bestWarp))
-            {
-                bestWarp = FindBestEntryWarp(location);
-                _cachedEntryWarps[location] = bestWarp;
-            }
-
-            Vector2 spawnTile = Vector2.Zero;
-            if (bestWarp != null)
-            {
-                spawnTile = GetWalkableTileNear(location, new Point(bestWarp.X, bestWarp.Y), 3);
-            }
+            Vector2 spawnTile = GetEntryTile(location);
 
             // Fallback if no warp found or no walkable tiles near warp
             if (spawnTile == Vector2.Zero)
@@ -315,7 +317,8 @@ namespace MarketTown.Framework.Services
             }
 
             // Add to tracking
-            int departureTime = NpcScheduleHelper.ConvertToHour(Game1.timeOfDay + _config.IndoorStoreVisitorStayTime);
+            int intendedStay = NpcScheduleHelper.ConvertToHour(Game1.timeOfDay + _config.IndoorStoreVisitorStayTime);
+            int departureTime = Math.Min(intendedStay, closeHour);
             _activeVisitors[visitor] = new VisitorData
             {
                 DepartureTime = departureTime,
@@ -479,6 +482,27 @@ namespace MarketTown.Framework.Services
                 return candidates[Game1.random.Next(candidates.Count)];
             }
 
+            return Vector2.Zero;
+        }
+
+        public int GetActiveVisitorCount(GameLocation location)
+        {
+            if (location == null) return 0;
+            return _activeVisitors.Keys.Count(n => n.currentLocation == location);
+        }
+
+        public Vector2 GetEntryTile(GameLocation location)
+        {
+            if (!_cachedEntryWarps.TryGetValue(location, out Warp bestWarp))
+            {
+                bestWarp = FindBestEntryWarp(location);
+                _cachedEntryWarps[location] = bestWarp;
+            }
+
+            if (bestWarp != null)
+            {
+                return GetWalkableTileNear(location, new Point(bestWarp.X, bestWarp.Y), 3);
+            }
             return Vector2.Zero;
         }
     }

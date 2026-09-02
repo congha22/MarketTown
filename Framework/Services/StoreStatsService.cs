@@ -33,7 +33,7 @@ namespace MarketTown.Framework.Services
         {
             if (location == null) return;
             string key = location.NameOrUniqueName;
-            
+
             if (!_storeStats.TryGetValue(key, out var record))
             {
                 record = new StoreStatRecord();
@@ -47,7 +47,7 @@ namespace MarketTown.Framework.Services
         {
             if (location == null) return;
             string key = location.NameOrUniqueName;
-            
+
             if (!_storeStats.TryGetValue(key, out var record))
             {
                 record = new StoreStatRecord();
@@ -56,6 +56,21 @@ namespace MarketTown.Framework.Services
 
             record.TotalSoldItems++;
             record.TotalEarnings += price;
+        }
+
+        public void UpdateStoreHours(GameLocation location, int openHour, int closeHour)
+        {
+            if (location == null) return;
+            string key = location.NameOrUniqueName;
+            
+            if (!_storeStats.TryGetValue(key, out var record))
+            {
+                record = new StoreStatRecord();
+                _storeStats[key] = record;
+            }
+
+            record.OpenHour = openHour;
+            record.CloseHour = closeHour;
         }
 
         private void OnSaveLoaded(object sender, SaveLoadedEventArgs e)

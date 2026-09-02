@@ -146,11 +146,11 @@ namespace MarketTown.Framework.Services
 
         private void OnTimeChanged(object sender, TimeChangedEventArgs e)
         {
-            // Enforce positions for all hired employees
+            // Process employee schedules and pathfinding based on store hours
             foreach (var location in _storeTrackingService.ActiveStoreLocations)
             {
                 string key = location.NameOrUniqueName;
-                if (_storeEmployees.TryGetValue(key, out var record))
+                if (_storeEmployees.TryGetValue(key, out var record) && _storeTrackingService.StoreStatsService.StoreStats.TryGetValue(key, out var stats))
                 {
                     foreach (var kvp in record.HiredNPCs)
                     {
@@ -158,7 +158,79 @@ namespace MarketTown.Framework.Services
                         if (parts.Length == 2 && float.TryParse(parts[0], out float x) && float.TryParse(parts[1], out float y))
                         {
                             Vector2 checkoutTile = new Vector2(x, y);
-                            PlaceEmployeeAtCheckout(location, checkoutTile, kvp.Value);
+                            NPC npc = Game1.getCharacterFromName(kvp.Value);
+                            if (npc == null) continue;
+
+                            Furniture checkout = location.furniture.FirstOrDefault(f => f.TileLocation == checkoutTile && (f.ItemId == "d5a1lamdtd.MarketTown_CheckoutSmall" || f.ItemId == "d5a1lamdtd.MarketTown_CheckoutLarge"));
+                            if (checkout == null) continue;
+
+                            Vector2 standTile = checkoutTile;
+                            if (checkout.ItemId == "d5a1lamdtd.MarketTown_CheckoutSmall") standTile = new Vector2(checkoutTile.X, checkoutTile.Y + 1);
+                            else if (checkout.ItemId == "d5a1lamdtd.MarketTown_CheckoutLarge") standTile = new Vector2(checkoutTile.X + 1, checkoutTile.Y + 1);
+
+                            if (Game1.timeOfDay == stats.OpenHour)
+                            {
+                                // Walk to work
+                                Vector2 spawnTile = _storeTrackingService.VisitorService.GetEntryTile(location);
+                                if (spawnTile != Vector2.Zero)
+                                {
+                                    NpcScheduleHelper.CleanNpc(npc);
+                                    Game1.warpCharacter(npc, location, spawnTile);
+                                    npc.controller = new StardewValley.Pathfinding.PathFindController(npc, location, new Point((int)standTile.X, (int)standTile.Y), 2, (c, l) => {
+                                        PlaceEmployeeAtCheckout(l, checkoutTile, kvp.Value);
+                                    });
+                                }
+                                else
+                                {
+                                    PlaceEmployeeAtCheckout(location, checkoutTile, kvp.Value);
+                                }
+                            }
+                            else if (Game1.timeOfDay >= stats.CloseHour && Game1.timeOfDay < stats.CloseHour + 100)
+                            {
+                                // Walk home once all customers leave
+                                if (npc.controller == null && npc.currentLocation == location)
+                                {
+                                    int visitors = _storeTrackingService.VisitorService.GetActiveVisitorCount(location);
+                                    if (visitors == 0)
+                                    {
+                                        Vector2 doorTile = _storeTrackingService.VisitorService.GetEntryTile(location);
+                                        if (doorTile != Vector2.Zero)
+                                        {
+                                            if (_animStates.ContainsKey(npc))
+                                            {
+                                                _animStates[npc].Action = "none";
+                                                _animStates[npc].Timer = 0;
+                                            }
+                                            if (_casApi != null) _casApi.TriggerNpcAction(npc, "stop", 2);
+                                            
+                                            NpcScheduleHelper.CleanNpc(npc);
+                                            npc.controller = new StardewValley.Pathfinding.PathFindController(npc, location, new Point((int)doorTile.X, (int)doorTile.Y), 2, (c, l) => {
+                                                SendEmployeeHome(npc);
+                                            });
+                                        }
+                                        else
+                                        {
+                                            SendEmployeeHome(npc);
+                                        }
+                                    }
+                                }
+                            }
+                            else if (Game1.timeOfDay >= stats.CloseHour + 100)
+                            {
+                                // Force leave if they got stuck
+                                if (npc.currentLocation == location)
+                                {
+                                    SendEmployeeHome(npc);
+                                }
+                            }
+                            else if (Game1.timeOfDay > stats.OpenHour && Game1.timeOfDay < stats.CloseHour)
+                            {
+                                // Enforce placement during open hours if not moving (e.g. loaded mid-day)
+                                if (npc.currentLocation != location || (npc.Tile != standTile && npc.controller == null))
+                                {
+                                    PlaceEmployeeAtCheckout(location, checkoutTile, kvp.Value);
+                                }
+                            }
                         }
                     }
                 }
@@ -181,6 +253,8 @@ namespace MarketTown.Framework.Services
                 {
                     NPC npc = Game1.getCharacterFromName(npcName);
                     if (npc == null || npc.currentLocation == null) continue;
+                    
+                    if (npc.isMoving() || npc.controller != null) continue;
 
                     if (!_animStates.TryGetValue(npc, out var state))
                     {
@@ -273,6 +347,18 @@ namespace MarketTown.Framework.Services
             npc.controller = null;
             npc.ClearSchedule();
             npc.ignoreScheduleToday = true;
+        }
+
+        private void SendEmployeeHome(NPC npc)
+        {
+            if (npc == null) return;
+            NpcScheduleHelper.CleanNpc(npc);
+            
+            string defaultMap = npc.DefaultMap;
+            if (string.IsNullOrEmpty(defaultMap)) defaultMap = "Town";
+            
+            Game1.warpCharacter(npc, defaultMap, npc.DefaultPosition / 64f);
+            npc.faceDirection(npc.DefaultFacingDirection);
         }
     }
 }

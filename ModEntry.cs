@@ -5,6 +5,8 @@ using MarketTown.Framework.Config;
 using MarketTown.Framework.Services;
 using MarketTown.Framework.UI;
 using StardewValley;
+using HarmonyLib;
+using MarketTown.Framework.Patches;
 
 namespace MarketTown
 {
@@ -29,6 +31,17 @@ namespace MarketTown
             // Register events
             helper.Events.GameLoop.GameLaunched += this.OnGameLaunched;
             helper.Events.Input.ButtonPressed += this.OnButtonPressed;
+
+            // Apply Harmony patches
+            var harmony = new Harmony(this.ModManifest.UniqueID);
+            harmony.Patch(
+                original: AccessTools.Method(typeof(StardewValley.Objects.Furniture), nameof(StardewValley.Objects.Furniture.IntersectsForCollision)),
+                postfix: new HarmonyMethod(typeof(FurniturePatches), nameof(FurniturePatches.IntersectsForCollision_Postfix))
+            );
+            harmony.Patch(
+                original: AccessTools.Method(typeof(StardewValley.Objects.Furniture), nameof(StardewValley.Objects.Furniture.draw), new Type[] { typeof(Microsoft.Xna.Framework.Graphics.SpriteBatch), typeof(int), typeof(int), typeof(float) }),
+                prefix: new HarmonyMethod(typeof(FurniturePatches), nameof(FurniturePatches.Draw_Prefix))
+            );
         }
 
         /// <summary>Raised after the game is launched, right before the first update tick.</summary>

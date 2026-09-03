@@ -12,6 +12,8 @@ namespace MarketTown.Framework.Services
 {
     public class StoreStatsService
     {
+        public static StoreStatsService Instance { get; private set; }
+
         private readonly IMonitor _monitor;
         private readonly IModHelper _helper;
         private readonly IndoorStoreTrackingService _storeTrackingService;
@@ -21,6 +23,7 @@ namespace MarketTown.Framework.Services
 
         public StoreStatsService(IMonitor monitor, IModHelper helper, IndoorStoreTrackingService storeTrackingService)
         {
+            Instance = this;
             _monitor = monitor;
             _helper = helper;
             _storeTrackingService = storeTrackingService;
@@ -71,6 +74,18 @@ namespace MarketTown.Framework.Services
 
             record.OpenHour = openHour;
             record.CloseHour = closeHour;
+        }
+
+        public bool IsStoreOpen(GameLocation location)
+        {
+            if (location == null) return false;
+            string key = location.NameOrUniqueName;
+            
+            if (_storeStats.TryGetValue(key, out var record))
+            {
+                return Game1.timeOfDay >= record.OpenHour && Game1.timeOfDay < record.CloseHour;
+            }
+            return false;
         }
 
         public void UpdateShopTheme(GameLocation location, string theme)

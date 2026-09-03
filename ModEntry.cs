@@ -46,6 +46,16 @@ namespace MarketTown
                 original: AccessTools.Method(typeof(StardewValley.Objects.Furniture), nameof(StardewValley.Objects.Furniture.draw), new Type[] { typeof(Microsoft.Xna.Framework.Graphics.SpriteBatch), typeof(int), typeof(int), typeof(float) }),
                 prefix: new HarmonyMethod(typeof(FurniturePatches), nameof(FurniturePatches.Draw_Prefix))
             );
+
+            // Object and Furniture prevent pickup during shop hours
+            harmony.Patch(
+                original: AccessTools.Method(typeof(StardewValley.Objects.Furniture), nameof(StardewValley.Objects.Furniture.canBeRemoved)),
+                postfix: new HarmonyMethod(typeof(ObjectPatches), nameof(ObjectPatches.CanBeRemoved_Postfix))
+            );
+            harmony.Patch(
+                original: AccessTools.Method(typeof(StardewValley.Object), nameof(StardewValley.Object.performToolAction)),
+                prefix: new HarmonyMethod(typeof(ObjectPatches), nameof(ObjectPatches.PerformToolAction_Prefix))
+            );
         }
 
         /// <summary>Raised after the game is launched, right before the first update tick.</summary>

@@ -17,17 +17,19 @@ namespace MarketTown.Framework.UI
         private readonly Vector2 _checkoutTile;
         private readonly List<NPC> _availableNpcs;
         private readonly Action<string> _onHired;
+        private readonly List<string> _pendingHires;
 
         private readonly List<ClickableComponent> _npcButtons = new List<ClickableComponent>();
         private readonly int _buttonsPerPage = 8;
         private int _currentPage = 0;
 
-        public EmployeeSelectionMenu(StoreEmployeeService employeeService, GameLocation location, Vector2 checkoutTile, Action<string> onHired)
+        public EmployeeSelectionMenu(StoreEmployeeService employeeService, GameLocation location, Vector2 checkoutTile, Action<string> onHired, List<string> pendingHires = null)
         {
             _employeeService = employeeService;
             _location = location;
             _checkoutTile = checkoutTile;
             _onHired = onHired;
+            _pendingHires = pendingHires ?? new List<string>();
 
             this.width = 600;
             this.height = 600;
@@ -45,7 +47,7 @@ namespace MarketTown.Framework.UI
             _availableNpcs = new List<NPC>();
             foreach (var npc in Utility.getAllCharacters())
             {
-                if (npc.Name.StartsWith("d5a1lamdtd.cas.npc", StringComparison.OrdinalIgnoreCase) && !_employeeService.IsEmployee(npc))
+                if (npc.Name.StartsWith("d5a1lamdtd.cas.npc", StringComparison.OrdinalIgnoreCase) && !_employeeService.IsEmployee(npc) && !_pendingHires.Contains(npc.Name))
                 {
                     _availableNpcs.Add(npc);
                 }
@@ -89,8 +91,9 @@ namespace MarketTown.Framework.UI
                 if (btn.containsPoint(x, y))
                 {
                     Game1.playSound("coin");
-                    _employeeService.HireEmployee(_location, _checkoutTile, btn.name);
                     _onHired?.Invoke(btn.name);
+                    // this.exitThisMenu(true) will be handled by the parent replacing the menu, 
+                    // but we can call it just in case parent doesn't override activeMenu.
                     this.exitThisMenu(true);
                     return;
                 }

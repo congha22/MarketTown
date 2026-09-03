@@ -63,7 +63,43 @@ namespace MarketTown.Framework.Services
             _monitor.Log($"Hired {npcName} at {key} checkout tile {tileKey}", LogLevel.Info);
 
             // Apply immediately if already open
-            PlaceEmployeeAtCheckout(location, checkoutTile, npcName);
+            if (_storeTrackingService.StoreStatsService.StoreStats.TryGetValue(key, out var stats))
+            {
+                if (Game1.timeOfDay >= stats.OpenHour && Game1.timeOfDay < stats.CloseHour)
+                {
+                    PlaceEmployeeAtCheckout(location, checkoutTile, npcName);
+                }
+            }
+        }
+
+        public void FireEmployee(GameLocation location, Vector2 checkoutTile)
+        {
+            if (location == null) return;
+            string key = location.NameOrUniqueName;
+
+            if (_storeEmployees.TryGetValue(key, out var record))
+            {
+                string tileKey = $"{checkoutTile.X},{checkoutTile.Y}";
+                if (record.HiredNPCs.TryGetValue(tileKey, out string npcName))
+                {
+                    record.HiredNPCs.Remove(tileKey);
+                    _monitor.Log($"Fired {npcName} from {key} checkout tile {tileKey}", LogLevel.Info);
+
+                    NPC npc = Game1.getCharacterFromName(npcName);
+                    if (npc != null)
+                    {
+                        if (_animStates.ContainsKey(npc))
+                        {
+                            _animStates[npc].Action = "none";
+                            _animStates[npc].Timer = 0;
+                        }
+                        if (_casApi != null) _casApi.TriggerNpcAction(npc, "stop", 2);
+
+                        SendEmployeeHome(npc);
+                        npc.ignoreScheduleToday = false;
+                    }
+                }
+            }
         }
 
         public bool IsEmployee(NPC npc)

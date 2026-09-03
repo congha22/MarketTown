@@ -60,6 +60,15 @@ namespace MarketTown.Framework.UI
         private int _panelWidth;
         private int _panelHeight;
 
+        // ── Pending Changes ───────────────────────────────────────────────────
+        private int _tempOpenHour;
+        private int _tempCloseHour;
+        private string _tempThemeKey;
+        private Dictionary<Vector2, string> _tempHiredNpcs = new();
+
+        public ClickableTextureComponent okButton;
+        public ClickableTextureComponent cancelButton;
+
         // ── Constructor ───────────────────────────────────────────────────────
 
         public StoreManagerMenu(
@@ -87,17 +96,30 @@ namespace MarketTown.Framework.UI
                 Game1.mouseCursors,
                 new Rectangle(337, 494, 12, 12), 4f);
 
+            this.okButton = new ClickableTextureComponent(
+                new Rectangle(this.xPositionOnScreen + this.width - 128, this.yPositionOnScreen + this.height - 64, 64, 64),
+                Game1.mouseCursors,
+                Game1.getSourceRectForStandardTileSheet(Game1.mouseCursors, 46), 1f);
+
+            this.cancelButton = new ClickableTextureComponent(
+                new Rectangle(this.xPositionOnScreen + this.width - 64, this.yPositionOnScreen + this.height - 64, 64, 64),
+                Game1.mouseCursors,
+                Game1.getSourceRectForStandardTileSheet(Game1.mouseCursors, 47), 1f);
+
             // ── Fetch saved stats ──────────────────────────────────────────
             _storeStats = _storeStatsService.StoreStats.TryGetValue(_location.NameOrUniqueName, out var stats)
                 ? stats
                 : new StoreStatRecord();
 
+            _tempOpenHour = _storeStats.OpenHour;
+            _tempCloseHour = _storeStats.CloseHour;
+            _tempThemeKey = _storeStats.ShopTheme ?? "General";
+
             // ── Build theme list from registry ────────────────────────────
             _themeKeys = _shopBehaviorService.AllBehaviors.Keys.OrderBy(k => k).ToList();
             _themeNames = _themeKeys.Select(k => _shopBehaviorService.AllBehaviors[k].DisplayName).ToList();
 
-            string savedTheme = _storeStats.ShopTheme ?? "General";
-            _selectedThemeIndex = Math.Max(0, _themeKeys.IndexOf(savedTheme));
+            _selectedThemeIndex = Math.Max(0, _themeKeys.IndexOf(_tempThemeKey));
 
             // ── Build checkout hire buttons (right column) ────────────────
             _checkouts = _location.furniture
@@ -109,6 +131,7 @@ namespace MarketTown.Framework.UI
             {
                 var btn = new ClickableComponent(new Rectangle(this.xPositionOnScreen + 500, btnY, 150, 40), "HireBtn");
                 _hireButtons[btn] = checkout.TileLocation;
+                _tempHiredNpcs[checkout.TileLocation] = _employeeService.GetHiredEmployee(_location, checkout.TileLocation);
                 btnY += 60;
             }
 
@@ -152,26 +175,75 @@ namespace MarketTown.Framework.UI
         {
             base.receiveLeftClick(x, y, playSound);
 
+            bool isStoreOpen = Game1.timeOfDay >= _storeStats.OpenHour && Game1.timeOfDay < _storeStats.CloseHour;
+
             if (this.upperRightCloseButton != null && this.upperRightCloseButton.containsPoint(x, y))
             {
                 this.exitThisMenu(playSound);
                 return;
             }
 
-            // ── Theme arrows ──────────────────────────────────────────────
-            if (_themeLeftArrow.containsPoint(x, y))
+            if (this.okButton != null && this.okButton.containsPoint(x, y))
             {
-                Game1.playSound("drumkit6");
-                _selectedThemeIndex = (_selectedThemeIndex - 1 + _themeKeys.Count) % _themeKeys.Count;
-                ApplySelectedTheme();
+                Game1.playSound("bigDeSelect");
+                _shopBehaviorService.SetTheme(_location, _tempThemeKey);
+                _storeStatsService.UpdateStoreHours(_location, _tempOpenHour, _tempCloseHour);
+                
+                // Apply pending hires / fires
+                foreach (var kvp in _tempHiredNpcs)
+                {
+                    string currentHired = _employeeService.GetHiredEmployee(_location, kvp.Key);
+                    string pendingHired = kvp.Value;
+                    
+                    if (currentHired != pendingHired)
+                    {
+                        if (!string.IsNullOrEmpty(currentHired))
+                        {
+                            _employeeService.FireEmployee(_location, kvp.Key);
+                        }
+                        if (!string.IsNullOrEmpty(pendingHired))
+                        {
+                            _employeeService.HireEmployee(_location, kvp.Key, pendingHired);
+                        }
+                    }
+                }
+                
+                this.exitThisMenu(playSound);
                 return;
             }
-            if (_themeRightArrow.containsPoint(x, y))
+
+            if (this.cancelButton != null && this.cancelButton.containsPoint(x, y))
             {
-                Game1.playSound("drumkit6");
-                _selectedThemeIndex = (_selectedThemeIndex + 1) % _themeKeys.Count;
-                ApplySelectedTheme();
+                Game1.playSound("bigDeSelect");
+                this.exitThisMenu(playSound);
                 return;
+            }
+
+            // ── Theme arrows ──────────────────────────────────────────────
+            bool clickedThemeArrow = _themeLeftArrow.containsPoint(x, y) || _themeRightArrow.containsPoint(x, y);
+
+            if (clickedThemeArrow)
+            {
+                if (isStoreOpen)
+                {
+                    Game1.addHUDMessage(new HUDMessage("Cannot change theme while the store is open.", 3));
+                    return;
+                }
+
+                if (_themeLeftArrow.containsPoint(x, y))
+                {
+                    Game1.playSound("drumkit6");
+                    _selectedThemeIndex = (_selectedThemeIndex - 1 + _themeKeys.Count) % _themeKeys.Count;
+                    ApplySelectedTheme();
+                    return;
+                }
+                if (_themeRightArrow.containsPoint(x, y))
+                {
+                    Game1.playSound("drumkit6");
+                    _selectedThemeIndex = (_selectedThemeIndex + 1) % _themeKeys.Count;
+                    ApplySelectedTheme();
+                    return;
+                }
             }
 
             // ── Hire buttons ──────────────────────────────────────────────
@@ -180,43 +252,67 @@ namespace MarketTown.Framework.UI
                 if (kvp.Key.containsPoint(x, y))
                 {
                     Game1.playSound("drumkit6");
-                    Game1.activeClickableMenu = new EmployeeSelectionMenu(_employeeService, _location, kvp.Value, _ =>
+
+                    string hiredNpc = _tempHiredNpcs[kvp.Value];
+                    if (!string.IsNullOrEmpty(hiredNpc))
                     {
-                        Game1.activeClickableMenu = new StoreManagerMenu(
-                            _storeStatsService, _visitorService, _employeeService,
-                            _shopBehaviorService, _location, _helper);
-                    });
+                        if (isStoreOpen)
+                        {
+                            Game1.addHUDMessage(new HUDMessage("Cannot fire employee while the store is open.", 3));
+                            return;
+                        }
+
+                        // Mark as fired in temp state
+                        _tempHiredNpcs[kvp.Value] = null;
+                        return;
+                    }
+
+                    var parentMenu = this;
+                    var pendingList = _tempHiredNpcs.Values.Where(v => !string.IsNullOrEmpty(v)).ToList();
+                    
+                    Game1.activeClickableMenu = new EmployeeSelectionMenu(_employeeService, _location, kvp.Value, selectedNpc =>
+                    {
+                        parentMenu._tempHiredNpcs[kvp.Value] = selectedNpc;
+                        Game1.activeClickableMenu = parentMenu;
+                    }, pendingList);
                     return;
                 }
             }
 
             // ── Hours arrows ──────────────────────────────────────────────
-            if (_openLeftArrow.containsPoint(x, y))
+            bool clickedHourArrow = _openLeftArrow.containsPoint(x, y) || _openRightArrow.containsPoint(x, y) || _closeLeftArrow.containsPoint(x, y) || _closeRightArrow.containsPoint(x, y);
+
+            if (clickedHourArrow)
             {
-                Game1.playSound("drumkit6");
-                _storeStats.OpenHour = Math.Max(600, _storeStats.OpenHour - 100);
-                _storeStats.OpenHour = Math.Min(_storeStats.OpenHour, _storeStats.CloseHour - 100);
-                _storeStatsService.UpdateStoreHours(_location, _storeStats.OpenHour, _storeStats.CloseHour);
-            }
-            else if (_openRightArrow.containsPoint(x, y))
-            {
-                Game1.playSound("drumkit6");
-                _storeStats.OpenHour = Math.Min(2400, _storeStats.OpenHour + 100);
-                _storeStats.OpenHour = Math.Min(_storeStats.OpenHour, _storeStats.CloseHour - 100);
-                _storeStatsService.UpdateStoreHours(_location, _storeStats.OpenHour, _storeStats.CloseHour);
-            }
-            else if (_closeLeftArrow.containsPoint(x, y))
-            {
-                Game1.playSound("drumkit6");
-                _storeStats.CloseHour = Math.Max(600, _storeStats.CloseHour - 100);
-                _storeStats.CloseHour = Math.Max(_storeStats.CloseHour, _storeStats.OpenHour + 100);
-                _storeStatsService.UpdateStoreHours(_location, _storeStats.OpenHour, _storeStats.CloseHour);
-            }
-            else if (_closeRightArrow.containsPoint(x, y))
-            {
-                Game1.playSound("drumkit6");
-                _storeStats.CloseHour = Math.Min(2400, _storeStats.CloseHour + 100);
-                _storeStatsService.UpdateStoreHours(_location, _storeStats.OpenHour, _storeStats.CloseHour);
+                if (isStoreOpen)
+                {
+                    Game1.addHUDMessage(new HUDMessage("Cannot change hours while the store is open.", 3));
+                    return;
+                }
+
+                if (_openLeftArrow.containsPoint(x, y))
+                {
+                    Game1.playSound("drumkit6");
+                    _tempOpenHour = Math.Max(600, _tempOpenHour - 100);
+                    _tempOpenHour = Math.Min(_tempOpenHour, _tempCloseHour - 100);
+                }
+                else if (_openRightArrow.containsPoint(x, y))
+                {
+                    Game1.playSound("drumkit6");
+                    _tempOpenHour = Math.Min(2400, _tempOpenHour + 100);
+                    _tempOpenHour = Math.Min(_tempOpenHour, _tempCloseHour - 100);
+                }
+                else if (_closeLeftArrow.containsPoint(x, y))
+                {
+                    Game1.playSound("drumkit6");
+                    _tempCloseHour = Math.Max(600, _tempCloseHour - 100);
+                    _tempCloseHour = Math.Max(_tempCloseHour, _tempOpenHour + 100);
+                }
+                else if (_closeRightArrow.containsPoint(x, y))
+                {
+                    Game1.playSound("drumkit6");
+                    _tempCloseHour = Math.Min(2400, _tempCloseHour + 100);
+                }
             }
 
             // ── Delegate to current panel ─────────────────────────────────
@@ -225,10 +321,7 @@ namespace MarketTown.Framework.UI
 
         private void ApplySelectedTheme()
         {
-            string key = _themeKeys[_selectedThemeIndex];
-            _shopBehaviorService.SetTheme(_location, key);
-            // Refresh local record reference
-            _storeStats = _storeStatsService.StoreStats.TryGetValue(_location.NameOrUniqueName, out var s) ? s : _storeStats;
+            _tempThemeKey = _themeKeys[_selectedThemeIndex];
             RebuildPanel();
         }
 
@@ -236,6 +329,8 @@ namespace MarketTown.Framework.UI
         {
             base.performHoverAction(x, y);
             this.upperRightCloseButton?.tryHover(x, y);
+            this.okButton?.tryHover(x, y);
+            this.cancelButton?.tryHover(x, y);
             _currentPanel?.PerformHoverAction(x, y);
         }
 
@@ -305,9 +400,26 @@ namespace MarketTown.Framework.UI
                     var btn = _hireButtons.FirstOrDefault(kvp => kvp.Value == checkout.TileLocation).Key;
                     if (btn != null)
                     {
-                        string hiredNpc = _employeeService.GetHiredEmployee(_location, checkout.TileLocation);
-                        string btnText = string.IsNullOrEmpty(hiredNpc) ? "Hire" : hiredNpc;
+                        string hiredNpc = _tempHiredNpcs[checkout.TileLocation];
+                        string btnText = "Hire";
                         bool isHovered = btn.containsPoint(Game1.getMouseX(), Game1.getMouseY());
+                        
+                        if (!string.IsNullOrEmpty(hiredNpc))
+                        {
+                            bool isStoreOpen = Game1.timeOfDay >= _storeStats.OpenHour && Game1.timeOfDay < _storeStats.CloseHour;
+                            NPC npc = Game1.getCharacterFromName(hiredNpc);
+                            string employeeDisplayName = npc != null ? npc.displayName : hiredNpc;
+                            
+                            if (isHovered && !isStoreOpen)
+                            {
+                                btnText = "Fire";
+                            }
+                            else
+                            {
+                                btnText = employeeDisplayName;
+                            }
+                        }
+
                         Color bgColor = isHovered ? Color.Wheat : Color.White;
 
                         IClickableMenu.drawTextureBox(b, Game1.mouseCursors, new Rectangle(384, 396, 15, 15),
@@ -328,7 +440,7 @@ namespace MarketTown.Framework.UI
 
             Utility.drawTextWithShadow(b, "Open:", Game1.smallFont, new Vector2(settingsX, settingsY + 45), Game1.textColor);
             _openLeftArrow.draw(b);
-            string openTimeStr = Game1.getTimeOfDayString(_storeStats.OpenHour);
+            string openTimeStr = Game1.getTimeOfDayString(_tempOpenHour);
             Vector2 openStrSize = Game1.smallFont.MeasureString(openTimeStr);
             Utility.drawTextWithShadow(b, openTimeStr, Game1.smallFont,
                 new Vector2(settingsX + 117 - openStrSize.X / 2, settingsY + 45), Game1.textColor);
@@ -336,13 +448,15 @@ namespace MarketTown.Framework.UI
 
             Utility.drawTextWithShadow(b, "Close:", Game1.smallFont, new Vector2(settingsX, settingsY + 105), Game1.textColor);
             _closeLeftArrow.draw(b);
-            string closeTimeStr = Game1.getTimeOfDayString(_storeStats.CloseHour);
+            string closeTimeStr = Game1.getTimeOfDayString(_tempCloseHour);
             Vector2 closeStrSize = Game1.smallFont.MeasureString(closeTimeStr);
             Utility.drawTextWithShadow(b, closeTimeStr, Game1.smallFont,
                 new Vector2(settingsX + 117 - closeStrSize.X / 2, settingsY + 105), Game1.textColor);
             _closeRightArrow.draw(b);
 
             // ── Overlay elements ──────────────────────────────────────────
+            this.okButton?.draw(b);
+            this.cancelButton?.draw(b);
             this.upperRightCloseButton?.draw(b);
             this.drawMouse(b);
         }

@@ -218,6 +218,24 @@ namespace MarketTown.Framework.Services
                 // Customer only spawn when time > open and < close, not equal
                 if (Game1.timeOfDay > stats.OpenHour && Game1.timeOfDay < stats.CloseHour)
                 {
+                    // Check if there is at least one active cashier in the shop
+                    bool hasActiveCashier = false;
+                    if (_storeTrackingService.EmployeeService != null && _storeTrackingService.EmployeeService.StoreEmployees.TryGetValue(location.NameOrUniqueName, out var record))
+                    {
+                        foreach (var npcName in record.HiredNPCs.Values)
+                        {
+                            NPC employee = Game1.getCharacterFromName(npcName);
+                            if (employee != null && employee.currentLocation == location)
+                            {
+                                hasActiveCashier = true;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (!hasActiveCashier)
+                        continue;
+
                     int currentVisitors = _activeVisitors.Keys.Count(n => n.currentLocation == location);
                     int maxVisitors = GetStoreCapacity(location);
 

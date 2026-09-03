@@ -51,7 +51,8 @@ namespace MarketTown.Framework.Patches
 
             return obj.ItemId == "d5a1lamdtd.MarketTown_CheckoutSmall" ||
                    obj.ItemId == "d5a1lamdtd.MarketTown_CheckoutLarge" ||
-                   obj.ItemId == "d5a1lamdtd.MarketTown_StoreRegister";
+                   obj.ItemId == "d5a1lamdtd.MarketTown_StoreRegister" ||
+                   obj.ItemId == "d5a1lamdtd.MarketTown_FittingBooth";
         }
     }
 }

@@ -1,6 +1,7 @@
 using System;
 using StardewModdingAPI;
 using StardewModdingAPI.Events;
+using MarketTown.Framework.Behaviors.ShopCategories;
 using MarketTown.Framework.Config;
 using MarketTown.Framework.Services;
 using MarketTown.Framework.UI;
@@ -23,6 +24,7 @@ namespace MarketTown
         private StoreStatsService _storeStatsService;
         private StoreEmployeeService _storeEmployeeService;
         private CheckoutManagerService _checkoutManagerService;
+        private ShopBehaviorService _shopBehaviorService;
 
         /// <summary>The mod entry point, called after the mod is first loaded.</summary>
         /// <param name="helper">Provides simplified APIs for writing mods.</param>
@@ -69,7 +71,15 @@ namespace MarketTown
             
             _storeEmployeeService = new StoreEmployeeService(this.Monitor, this.Helper, _indoorStoreTrackingService);
             _indoorStoreTrackingService.EmployeeService = _storeEmployeeService;
-            
+
+            _shopBehaviorService = new ShopBehaviorService(this.Monitor, _storeStatsService);
+            // Built-in themes
+            _shopBehaviorService.Register(new FashionShopBehavior(this.Monitor, indoorVisitorService));
+            // Wire ShopBehaviorService into all hook points
+            indoorVisitorService.ShopBehaviorService = _shopBehaviorService;
+            salesService.ShopBehaviorService = _shopBehaviorService;
+            _indoorStoreTrackingService.ShopBehaviorService = _shopBehaviorService;
+
             _checkoutManagerService = new CheckoutManagerService(this.Monitor, _storeEmployeeService, this.Helper);
             indoorVisitorService.CheckoutManager = _checkoutManagerService;
             indoorVisitorService.SalesService = salesService;

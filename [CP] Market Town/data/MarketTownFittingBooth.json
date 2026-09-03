@@ -1,0 +1,18 @@
+{
+  "Changes": [
+    {
+      "LogName": "Add Fitting Booth Furniture",
+      "Action": "EditData",
+      "Target": "Data/Furniture",
+      "Entries": {
+        "d5a1lamdtd.MarketTown_FittingBooth": "Fitting Booth/decor/3 2/3 2/1/500/0/Fitting Booth/0/d5a1lamdtd.MarketTown.FittingBoothTexture"
+      }
+    },
+    {
+      "LogName": "Load Fitting Booth Texture",
+      "Action": "Load",
+      "Target": "d5a1lamdtd.MarketTown.FittingBoothTexture",
+      "FromFile": "assets/FittingBooth.png"
+    }
+  ]
+}

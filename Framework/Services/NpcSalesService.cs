@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using StardewModdingAPI;
 using StardewValley;
 using StardewValley.Objects;
+using MarketTown.Framework.Behaviors.ShopCategories;
 using MarketTown.Framework.Config;
 using MarketTown.Framework.Models;
 
@@ -17,6 +18,9 @@ namespace MarketTown.Framework.Services
         private readonly SalesTrackingService _salesTrackingService;
         private readonly StoreStatsService _storeStatsService;
         private readonly IndoorVisitorService _indoorVisitorService;
+
+        /// <summary>Optional. When set, applies theme-specific price multipliers.</summary>
+        public ShopBehaviorService ShopBehaviorService { get; set; }
 
         public NpcSalesService(IMonitor monitor, ModConfig config, TableRestockService restockService, SalesTrackingService salesTrackingService, StoreStatsService storeStatsService, IndoorVisitorService indoorVisitorService)
         {
@@ -68,6 +72,15 @@ namespace MarketTown.Framework.Services
                 };
 
                 int sellPrice = (int)(basePrice * _config.PriceMultiplier * priceModifier * qualityModifier);
+
+                // ── Theme hook: apply the shop's category price multiplier ──
+                if (ShopBehaviorService != null && targetObject?.Location != null)
+                {
+                    float themeMultiplier = ShopBehaviorService
+                        .GetBehaviorForLocation(targetObject.Location)
+                        .GetPriceMultiplier(targetObject);
+                    sellPrice = (int)(sellPrice * themeMultiplier);
+                }
 
                 // Determine who gets the money (handle separate wallets in multiplayer)
                 Farmer seller = Game1.player;

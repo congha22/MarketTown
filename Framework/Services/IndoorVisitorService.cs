@@ -6,6 +6,7 @@ using StardewModdingAPI;
 using StardewModdingAPI.Events;
 using StardewValley;
 using StardewValley.Objects;
+using MarketTown.Framework.Behaviors.ShopCategories;
 using MarketTown.Framework.Config;
 using MarketTown.Framework.Models;
 
@@ -18,6 +19,9 @@ namespace MarketTown.Framework.Services
         private readonly ModConfig _config;
         private readonly IndoorStoreTrackingService _storeTrackingService;
         private readonly StoreStatsService _storeStatsService;
+
+        /// <summary>Optional. When set, provides theme-specific NPC behaviors and capacity buffs.</summary>
+        public ShopBehaviorService ShopBehaviorService { get; set; }
 
         public class VisitorData
         {
@@ -35,6 +39,24 @@ namespace MarketTown.Framework.Services
 
             public float RandomEmoteTimer { get; set; }
             public float RandomEmoteThreshold { get; set; } = Game1.random.Next(15000, 30000);
+
+            // ── Fitting Booth state ───────────────────────────────────────
+            /// <summary>True while the NPC is walking toward a fitting booth slot.</summary>
+            public bool IsHeadingToBooth { get; set; }
+            /// <summary>True while the NPC is inside the booth waiting.</summary>
+            public bool IsInFittingBooth { get; set; }
+            /// <summary>World-tile of the booth's walkable slot (X=1, Y=1 relative to furniture TileLocation).</summary>
+            public Vector2 FittingBoothTile { get; set; }
+            /// <summary>Accumulated milliseconds spent inside the booth (per OnVisitorTick delta).</summary>
+            public float FittingBoothTimer { get; set; }
+            /// <summary>Randomised target duration in ms (3 000–5 000). Set when the NPC arrives.</summary>
+            public float FittingBoothDuration { get; set; }
+            /// <summary>
+            /// Number of fashion items in the cart when the NPC last began a booth visit.
+            /// FashionShopBehavior compares the current fashion item count against this value:
+            /// only sends them to the booth again if they have bought MORE since the last visit.
+            /// </summary>
+            public int FashionItemsAtLastBoothEntry { get; set; } = 0;
         }
 
         private readonly Dictionary<NPC, VisitorData> _activeVisitors = new Dictionary<NPC, VisitorData>();
@@ -112,6 +134,10 @@ namespace MarketTown.Framework.Services
                     }
                     else if (Game1.timeOfDay >= data.DepartureTime && !data.IsDeparting)
                     {
+                        // Don't interrupt a fitting booth visit — let it finish naturally.
+                        if (data.IsInFittingBooth || data.IsHeadingToBooth)
+                            continue;
+
                         if (data.ShoppingCart.Count > 0 && CheckoutManager != null)
                         {
                             if (CheckoutManager.TryReserveSlot(npc.currentLocation, npc, out int slotIndex, out Furniture checkout))
@@ -223,6 +249,16 @@ namespace MarketTown.Framework.Services
 
             if (npc.currentLocation == null) return;
 
+            // ── Per-visitor tick: always run for timers (booth etc.), before the idle check ──
+            // Each NPC is processed once per round-robin cycle of N visitors × 20 ticks.
+            // Multiply by visitor count so timers advance at the correct real-world rate.
+            if (_activeVisitors.TryGetValue(npc, out var tickData))
+            {
+                float realDeltaMs = 333f * Math.Max(1, _activeVisitors.Count);
+                ShopBehaviorService?.GetBehaviorForLocation(npc.currentLocation)
+                    .OnVisitorTick(npc, npc.currentLocation, tickData, realDeltaMs);
+            }
+
             if (npc.isMoving())
             {
                 return;
@@ -260,7 +296,8 @@ namespace MarketTown.Framework.Services
                         }
                     }
 
-                    visitorData.CheckoutWaitTimer += 333f; // 20 ticks = approx 333ms
+                    // Each NPC update covers N×20 ticks of real time (N = active visitor count).
+                    visitorData.CheckoutWaitTimer += 333f * Math.Max(1, _activeVisitors.Count);
 
                     float requiredWait = visitorData.ShoppingCart.Count * 1500f; // 1.5 seconds per item
                     if (visitorData.CheckoutWaitTimer >= requiredWait)
@@ -321,11 +358,20 @@ namespace MarketTown.Framework.Services
 
             if (npc.timerSinceLastMovement >= 7000f) // 7 seconds
             {
-                Vector2 target = GetRandomWalkableTile(npc.currentLocation);
-                if (target != Vector2.Zero)
+                // ── Theme hook: let the active theme try to handle movement first ──
+                bool customHandled = ShopBehaviorService != null &&
+                    ShopBehaviorService.GetBehaviorForLocation(npc.currentLocation)
+                        .TryHandleCustomCustomerWander(npc, npc.currentLocation, vData);
+
+                if (!customHandled)
                 {
-                    npc.controller = new StardewValley.Pathfinding.PathFindController(npc, npc.currentLocation, new Point((int)target.X, (int)target.Y), -1);
-                    npc.timerSinceLastMovement = 0f;
+                    // Default: pick a random walkable tile
+                    Vector2 target = GetRandomWalkableTile(npc.currentLocation);
+                    if (target != Vector2.Zero)
+                    {
+                        npc.controller = new StardewValley.Pathfinding.PathFindController(npc, npc.currentLocation, new Point((int)target.X, (int)target.Y), -1);
+                        npc.timerSinceLastMovement = 0f;
+                    }
                 }
             }
         }
@@ -412,7 +458,7 @@ namespace MarketTown.Framework.Services
             int maxLimit = baseCapacity + (int)(baseCapacity * bonusScore);
             maxLimit = Math.Min(20, maxLimit);
 
-            return new StoreCapacityScores
+            var result = new StoreCapacityScores
             {
                 ShopLevel = shopLevel,
                 ShopLevelScore = levelScore,
@@ -421,6 +467,11 @@ namespace MarketTown.Framework.Services
                 BonusScore = bonusScore,
                 MaxCapacity = maxLimit
             };
+
+            // ── Theme hook: let the active behavior apply its own buffs ──
+            ShopBehaviorService?.GetBehaviorForLocation(location)?.ApplyShopBuffs(result, location);
+
+            return result;
         }
 
         public (int SellingNodes, int Decorations) GetStoreStatistics(GameLocation location)
@@ -514,6 +565,42 @@ namespace MarketTown.Framework.Services
             {
                 return data.IsDeparting;
             }
+            return false;
+        }
+
+        /// <summary>
+        /// Finds a free Fitting Booth slot in the given location and reserves it for <paramref name="requesterData"/>.
+        /// Returns <c>true</c> and sets <paramref name="tile"/> to the walkable bottom-centre slot (X+1, Y+1)
+        /// if a free booth is found; otherwise returns <c>false</c>.
+        /// </summary>
+        public bool TryReserveBoothTile(GameLocation location, VisitorData requesterData, out Vector2 tile)
+        {
+            tile = Vector2.Zero;
+            if (location == null) return false;
+
+            // Build the set of tiles already claimed by other visitors
+            var occupiedTiles = new HashSet<Vector2>();
+            foreach (var d in _activeVisitors.Values)
+            {
+                if (d != requesterData && (d.IsHeadingToBooth || d.IsInFittingBooth))
+                    occupiedTiles.Add(d.FittingBoothTile);
+            }
+
+            const string BOOTH_ID = "d5a1lamdtd.MarketTown_FittingBooth";
+            foreach (var furniture in location.furniture)
+            {
+                if (furniture.ItemId != BOOTH_ID) continue;
+
+                // Walkable slot = one tile right and one tile down from the furniture's TileLocation
+                Vector2 slotTile = new Vector2(furniture.TileLocation.X + 1, furniture.TileLocation.Y + 1);
+
+                if (!occupiedTiles.Contains(slotTile))
+                {
+                    tile = slotTile;
+                    return true;
+                }
+            }
+
             return false;
         }
 

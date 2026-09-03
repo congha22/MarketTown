@@ -26,6 +26,10 @@
     {
       "Action": "Include",
       "FromFile": "data/MarketTownCheckoutSmall.json"
+    },
+    {
+      "Action": "Include",
+      "FromFile": "data/MarketTownFittingBooth.json"
     }
   ]
-}
+}

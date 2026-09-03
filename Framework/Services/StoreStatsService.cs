@@ -62,7 +62,7 @@ namespace MarketTown.Framework.Services
         {
             if (location == null) return;
             string key = location.NameOrUniqueName;
-            
+
             if (!_storeStats.TryGetValue(key, out var record))
             {
                 record = new StoreStatRecord();
@@ -71,6 +71,20 @@ namespace MarketTown.Framework.Services
 
             record.OpenHour = openHour;
             record.CloseHour = closeHour;
+        }
+
+        public void UpdateShopTheme(GameLocation location, string theme)
+        {
+            if (location == null) return;
+            string key = location.NameOrUniqueName;
+
+            if (!_storeStats.TryGetValue(key, out var record))
+            {
+                record = new StoreStatRecord();
+                _storeStats[key] = record;
+            }
+
+            record.ShopTheme = theme;
         }
 
         private void OnSaveLoaded(object sender, SaveLoadedEventArgs e)

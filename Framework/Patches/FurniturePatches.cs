@@ -51,6 +51,24 @@ namespace MarketTown.Framework.Patches
                     __result = false;
                 }
             }
+            else if (__instance.ItemId == "d5a1lamdtd.MarketTown_FittingBooth")
+            {
+                // 3x2 bounding box.
+                // Walkable: only bottom-centre tile (X=1, Y=1).
+                // Solid: all other 5 tiles.
+                //
+                //  [X=0,Y=0] [X=1,Y=0] [X=2,Y=0]   <- all solid (top row)
+                //  [X=0,Y=1] [X=1,Y=1] [X=2,Y=1]   <- X=1,Y=1 walkable; others solid
+
+                Rectangle solidTopRow   = new Rectangle(__instance.boundingBox.X,       __instance.boundingBox.Y,      192, 64); // entire top row
+                Rectangle solidBotLeft  = new Rectangle(__instance.boundingBox.X,       __instance.boundingBox.Y + 64,  64, 64); // bottom-left
+                Rectangle solidBotRight = new Rectangle(__instance.boundingBox.X + 128, __instance.boundingBox.Y + 64,  64, 64); // bottom-right
+
+                if (!rect.Intersects(solidTopRow) && !rect.Intersects(solidBotLeft) && !rect.Intersects(solidBotRight))
+                {
+                    __result = false;
+                }
+            }
         }
 
         public static bool Draw_Prefix(Furniture __instance, SpriteBatch spriteBatch, int x, int y, float alpha)
@@ -161,6 +179,46 @@ namespace MarketTown.Framework.Patches
                 spriteBatch.Draw(texture, col3Pos, col3Source, Color.White * alpha, 0f, Vector2.Zero, 4f, effect, col3Depth);
 
                 return false;
+            }
+            else if (__instance.ItemId == "d5a1lamdtd.MarketTown_FittingBooth")
+            {
+                Texture2D texture = ItemRegistry.GetDataOrErrorItem(__instance.QualifiedItemId).GetTexture();
+                if (texture == null) return true;
+
+                // Fitting Booth: 3x3 source sprite (48x48 px), 3x2 bounding box.
+                // The sprite's top tile-row hangs 1 tile above the bounding box (curtain rod).
+                // The whole booth draws at high depth so it renders ABOVE any NPC
+                // standing on the walkable bottom-centre slot (X=1, Y=1).
+
+                Vector2 position;
+                if (Furniture.isDrawingLocationFurniture)
+                {
+                    position = new Vector2(__instance.boundingBox.X, __instance.boundingBox.Bottom);
+                }
+                else
+                {
+                    position = new Vector2(x, y) * 64f;
+                    position.Y += __instance.boundingBox.Height;
+                }
+                position = Game1.GlobalToLocal(Game1.viewport, position);
+
+                // Top of the sprite = bottom of bounding box minus full sprite height (3 tiles * 4 scale * 16px = 192px)
+                Vector2 drawPos = new Vector2(
+                    position.X,
+                    position.Y - (__instance.sourceRect.Height * 4f)
+                );
+
+                SpriteEffects effect = __instance.Flipped ? SpriteEffects.FlipHorizontally : SpriteEffects.None;
+
+                // Draw at depth above the NPC standing inside.
+                // NPC depth ≈ (bb.Y + 112) / 10000f; bb.Bottom / 10000f is always greater.
+                float aboveNpcDepth = __instance.boundingBox.Bottom / 10000f;
+
+                spriteBatch.Draw(
+                    texture, drawPos, __instance.sourceRect.Value,
+                    Color.White * alpha, 0f, Vector2.Zero, 4f, effect, aboveNpcDepth);
+
+                return false; // Skip default draw
             }
 
             return true;

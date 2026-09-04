@@ -84,7 +84,7 @@ namespace MarketTown
 
             _shopBehaviorService = new ShopBehaviorService(this.Monitor, _storeStatsService);
             // Built-in themes
-            _shopBehaviorService.Register(new FashionShopBehavior(this.Monitor, indoorVisitorService));
+            _shopBehaviorService.Register(new FashionShopBehavior(this.Monitor, indoorVisitorService, this.Helper));
             // Wire ShopBehaviorService into all hook points
             indoorVisitorService.ShopBehaviorService = _shopBehaviorService;
             salesService.ShopBehaviorService = _shopBehaviorService;

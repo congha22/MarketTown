@@ -6,6 +6,7 @@ using StardewValley.Objects;
 using MarketTown.Framework.Models;
 using MarketTown.Framework.Services;
 using MarketTown.Framework.UI.Panels;
+using MarketTown.Framework.Integrations;
 
 namespace MarketTown.Framework.Behaviors.ShopCategories
 {
@@ -23,11 +24,13 @@ namespace MarketTown.Framework.Behaviors.ShopCategories
     {
         private readonly IMonitor _monitor;
         private readonly IndoorVisitorService _visitorService;
+        private readonly IModHelper _helper;
 
-        public FashionShopBehavior(IMonitor monitor, IndoorVisitorService visitorService)
+        public FashionShopBehavior(IMonitor monitor, IndoorVisitorService visitorService, IModHelper helper)
         {
             _monitor = monitor;
             _visitorService = visitorService;
+            _helper = helper;
         }
 
         // ── Identity ──────────────────────────────────────────────────────────
@@ -70,6 +73,29 @@ namespace MarketTown.Framework.Behaviors.ShopCategories
                 data.IsInFittingBooth = false;
                 data.FittingBoothTile = Vector2.Zero;
                 data.FittingBoothTimer = 0f;
+
+                // Call CAS API to try changing outfit if there are clothing items in the cart
+                ICASApi casApi = _helper.ModRegistry.GetApi<ICASApi>("d5a1lamdtd.CASCreateAStardewie");
+                if (casApi != null)
+                {
+                    bool changed = false;
+                    foreach (var cartItem in data.ShoppingCart)
+                    {
+                        if (IsFashionItem(cartItem.Item))
+                        {
+                            if (casApi.TryChangeOutfit(npc, cartItem.Item.QualifiedItemId))
+                            {
+                                changed = true;
+                            }
+                        }
+                    }
+
+                    if (changed)
+                    {
+                        npc.doEmote(20); // Heart emote for a successful change
+                        _monitor.Log($"{npc.Name} tried on and kept new clothes via CAS API.", LogLevel.Debug);
+                    }
+                }
 
                 _monitor.Log($"{npc.Name} finished trying on clothes and exited the fitting booth.", LogLevel.Debug);
             }

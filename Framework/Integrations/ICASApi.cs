@@ -7,5 +7,6 @@ namespace MarketTown.Framework.Integrations
     {
         void TriggerNpcAction(NPC npc, string action, int? facingDirection = null);
         IEnumerable<NPC> GetCustomNPCs();
+        bool TryChangeOutfit(NPC npc, string qualifiedItemId);
     }
 }

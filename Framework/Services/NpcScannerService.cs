@@ -267,6 +267,10 @@ namespace MarketTown.Framework.Services
             if (_indoorVisitorService.IsVisitorDeparting(npc))
                 return;
 
+            // Employees shouldn't be scanning
+            if (_storeTrackingService.EmployeeService?.IsEmployee(npc) == true)
+                return;
+
             bool isOutdoor = npc.currentLocation.IsOutdoors;
             bool hasIndoorLicense = _storeTrackingService.ActiveStoreLocations.Contains(npc.currentLocation);
 

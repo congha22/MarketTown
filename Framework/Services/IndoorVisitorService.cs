@@ -57,6 +57,16 @@ namespace MarketTown.Framework.Services
             /// only sends them to the booth again if they have bought MORE since the last visit.
             /// </summary>
             public int FashionItemsAtLastBoothEntry { get; set; } = 0;
+
+            // ── Sitting/Reading state ───────────────────────────────────────
+            public bool IsHeadingToRead { get; set; }
+            public bool IsSittingToRead { get; set; }
+            public Vector2 ReadingChairTile { get; set; }
+            public Furniture AssignedChair { get; set; }
+            public int AssignedChairSlotIndex { get; set; }
+            public float ReadingTimer { get; set; }
+            public float ReadingDuration { get; set; }
+            public int BooksAtLastReadEntry { get; set; } = 0;
         }
 
         private readonly Dictionary<NPC, VisitorData> _activeVisitors = new Dictionary<NPC, VisitorData>();
@@ -134,8 +144,8 @@ namespace MarketTown.Framework.Services
                     }
                     else if (Game1.timeOfDay >= data.DepartureTime && !data.IsDeparting)
                     {
-                        // Don't interrupt a fitting booth visit — let it finish naturally.
-                        if (data.IsInFittingBooth || data.IsHeadingToBooth)
+                        // Don't interrupt a fitting booth or reading visit — let it finish naturally.
+                        if (data.IsInFittingBooth || data.IsHeadingToBooth || data.IsSittingToRead || data.IsHeadingToRead)
                             continue;
 
                         if (data.ShoppingCart.Count > 0 && CheckoutManager != null)
@@ -200,6 +210,14 @@ namespace MarketTown.Framework.Services
                         if (data.IsCheckingOut && CheckoutManager != null)
                         {
                             CheckoutManager.ReleaseSlot(npc.currentLocation, data.AssignedCheckout.TileLocation, npc);
+                        }
+                        
+                        if (data.IsSittingToRead && data.AssignedChair != null)
+                        {
+                            if (!IsChairStillOccupied(data.AssignedChair, data))
+                            {
+                                data.AssignedChair.sittingFarmers.Remove(Game1.player.UniqueMultiplayerID);
+                            }
                         }
                     }
                     _activeVisitors.Remove(npc);
@@ -586,6 +604,11 @@ namespace MarketTown.Framework.Services
             return false;
         }
 
+        public bool IsChairStillOccupied(Furniture chair, VisitorData excludingData)
+        {
+            return _activeVisitors.Values.Any(d => d != excludingData && (d.IsSittingToRead || d.IsHeadingToRead) && d.AssignedChair == chair);
+        }
+
         /// <summary>
         /// Finds a free Fitting Booth slot in the given location and reserves it for <paramref name="requesterData"/>.
         /// Returns <c>true</c> and sets <paramref name="tile"/> to the walkable bottom-centre slot (X+1, Y+1)
@@ -616,6 +639,66 @@ namespace MarketTown.Framework.Services
                 {
                     tile = slotTile;
                     return true;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Finds a free chair/bench slot in the given location and reserves it for <paramref name="requesterData"/>.
+        /// Returns <c>true</c> and sets <paramref name="tile"/>, <paramref name="assignedChair"/>, and <paramref name="slotIndex"/>
+        /// if a free chair slot is found; otherwise returns <c>false</c>.
+        /// </summary>
+        public bool TryReserveChairTile(GameLocation location, VisitorData requesterData, out Vector2 tile, out Furniture assignedChair, out int slotIndex)
+        {
+            tile = Vector2.Zero;
+            assignedChair = null;
+            slotIndex = -1;
+            if (location == null) return false;
+
+            // Build the set of (furniture, slotIndex) already claimed by other visitors
+            var occupiedSlots = new HashSet<(Furniture, int)>();
+            foreach (var d in _activeVisitors.Values)
+            {
+                if (d != requesterData && (d.IsHeadingToRead || d.IsSittingToRead) && d.AssignedChair != null)
+                {
+                    occupiedSlots.Add((d.AssignedChair, d.AssignedChairSlotIndex));
+                }
+            }
+
+            foreach (var furniture in location.furniture)
+            {
+                int capacity = furniture.GetSeatCapacity();
+                if (capacity > 0)
+                {
+                    // Check slots 0 to capacity - 1
+                    for (int i = 0; i < capacity; i++)
+                    {
+                        if (!occupiedSlots.Contains((furniture, i)))
+                        {
+                            // Make sure it's not occupied by a real farmer either
+                            if (furniture.sittingFarmers != null && furniture.sittingFarmers.Values.Contains(i))
+                                continue;
+
+                            assignedChair = furniture;
+                            slotIndex = i;
+                            
+                            // To pathfind near the chair, we find an adjacent open tile
+                            // We use the actual seat position tile if we can, or adjacent
+                            List<Vector2> seatPositions = furniture.GetSeatPositions(false);
+                            if (i < seatPositions.Count)
+                            {
+                                tile = seatPositions[i];
+                            }
+                            else
+                            {
+                                tile = furniture.TileLocation; // Fallback
+                            }
+                            
+                            return true;
+                        }
+                    }
                 }
             }
 

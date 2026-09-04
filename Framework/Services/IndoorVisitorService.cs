@@ -211,7 +211,7 @@ namespace MarketTown.Framework.Services
                         {
                             CheckoutManager.ReleaseSlot(npc.currentLocation, data.AssignedCheckout.TileLocation, npc);
                         }
-                        
+
                         if (data.IsSittingToRead && data.AssignedChair != null)
                         {
                             if (!IsChairStillOccupied(data.AssignedChair, data))
@@ -421,22 +421,78 @@ namespace MarketTown.Framework.Services
                 NPC npc = kvp.Key;
                 VisitorData data = kvp.Value;
 
-                if (npc.currentLocation == Game1.currentLocation && data.ShoppingCart.Count > 0 && !(data.CheckoutSlotReached && data.CheckoutSlotIndex == 0))
+                if (npc.currentLocation == Game1.currentLocation)
                 {
-                    string text = data.ShoppingCart.Count.ToString();
-                    Vector2 textSize = Game1.smallFont.MeasureString(text);
+                    if (data.ShoppingCart.Count > 0 && !(data.CheckoutSlotReached && data.CheckoutSlotIndex == 0))
+                    {
+                        string text = data.ShoppingCart.Count.ToString();
+                        Vector2 textSize = Game1.smallFont.MeasureString(text);
 
-                    Vector2 position = Game1.GlobalToLocal(Game1.viewport, npc.Position);
-                    position.X += (64f - textSize.X) / 2f; // Center horizontally over the tile (64x64)
-                    position.Y -= 90f; // Above the NPC's head
+                        Vector2 position = Game1.GlobalToLocal(Game1.viewport, npc.Position);
+                        position.X += (64f - textSize.X) / 2f; // Center horizontally over the tile (64x64)
+                        position.Y -= 90f; // Above the NPC's head
 
-                    // Draw a small background for visibility
-                    Rectangle bgRect = new Rectangle((int)position.X - 4, (int)position.Y - 4, (int)textSize.X + 8, (int)textSize.Y + 8);
-                    e.SpriteBatch.Draw(Game1.fadeToBlackRect, bgRect, Color.White * 0.8f);
+                        // Draw a small background for visibility
+                        Rectangle bgRect = new Rectangle((int)position.X - 4, (int)position.Y - 4, (int)textSize.X + 8, (int)textSize.Y + 8);
+                        e.SpriteBatch.Draw(Game1.fadeToBlackRect, bgRect, Color.White * 0.8f);
 
-                    Utility.drawTextWithShadow(e.SpriteBatch, text, Game1.smallFont, position, Game1.textColor);
+                        Utility.drawTextWithShadow(e.SpriteBatch, text, Game1.smallFont, position, Game1.textColor);
+                    }
+
+                    if (data.IsSittingToRead)
+                    {
+                        DrawReadingBook(e.SpriteBatch, npc);
+                    }
                 }
             }
+        }
+
+        private void DrawReadingBook(Microsoft.Xna.Framework.Graphics.SpriteBatch b, NPC npc)
+        {
+            Microsoft.Xna.Framework.Graphics.Texture2D texture = Game1.mouseCursors_1_6;
+            Vector2 position = Game1.GlobalToLocal(Game1.viewport, npc.Position);
+            Rectangle sourceRect;
+            float rotation = 0f;
+            Microsoft.Xna.Framework.Graphics.SpriteEffects effects = Microsoft.Xna.Framework.Graphics.SpriteEffects.None;
+            float layerDepth = Math.Max(0.0001f, npc.StandingPixel.Y / 10000f);
+            Vector2 origin = Vector2.Zero;
+            float scale = 2f; // Scaled down 50%
+
+            switch (npc.FacingDirection)
+            {
+                case 0: // up
+                    // Cannot easily draw behind the NPC in the RenderedWorld event since this event 
+                    // fires after the world has completely finished drawing. 
+                    // However, if the NPC is facing away, their body would obscure the book anyway.
+                    return;
+                case 1: // right
+                    sourceRect = new Rectangle(27, 258, 13, 16);
+                    rotation = -MathHelper.ToRadians(135f); // rotate left 135 degree
+                    origin = new Vector2(13f / 2f, 16f / 2f);
+                    position.X += 56f; // adjusted slightly inward for smaller scale
+                    position.Y -= 24f;
+                    layerDepth += 0.002f; // above npc
+                    break;
+                case 2: // down
+                    sourceRect = new Rectangle(1, 278, 19, 17);
+                    origin = new Vector2(19f / 2f, 17f / 2f);
+                    position.X += 32f;
+                    position.Y += 0f; // Y position lower (increase Y)
+                    layerDepth += 0.002f; // above npc
+                    break;
+                case 3: // left
+                    sourceRect = new Rectangle(41, 278, 13, 16);
+                    rotation = MathHelper.ToRadians(135f); // rotate right 135 degree
+                    origin = new Vector2(13f / 2f, 16f / 2f);
+                    position.X += 8f; // adjusted slightly inward for smaller scale
+                    position.Y -= 24f;
+                    layerDepth += 0.002f; // above npc
+                    break;
+                default:
+                    return;
+            }
+
+            b.Draw(texture, position, sourceRect, Color.White, rotation, origin, scale, effects, Math.Max(0.0001f, layerDepth));
         }
 
         private int GetShopLevel(GameLocation location)
@@ -683,7 +739,7 @@ namespace MarketTown.Framework.Services
 
                             assignedChair = furniture;
                             slotIndex = i;
-                            
+
                             // To pathfind near the chair, we find an adjacent open tile
                             // We use the actual seat position tile if we can, or adjacent
                             List<Vector2> seatPositions = furniture.GetSeatPositions(false);
@@ -695,7 +751,7 @@ namespace MarketTown.Framework.Services
                             {
                                 tile = furniture.TileLocation; // Fallback
                             }
-                            
+
                             return true;
                         }
                     }

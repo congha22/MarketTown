@@ -25,7 +25,7 @@ namespace MarketTown.Framework.Behaviors.ShopCategories
         }
 
         public string CategoryName => "Discovery";
-        public string DisplayName  => "Discovery Shop";
+        public string DisplayName => "Discovery Shop";
 
         public void ApplyShopBuffs(StoreCapacityScores scores, GameLocation location)
         {
@@ -113,7 +113,7 @@ namespace MarketTown.Framework.Behaviors.ShopCategories
             data.BooksAtLastReadEntry = currentBookCount;
 
             NpcScheduleHelper.CleanNpc(npc);
-            
+
             // Pathfind to the tile next to the chair
             Vector2 pathTile = GetOpenTileNear(location, chairTile);
             if (pathTile == Vector2.Zero)
@@ -147,12 +147,24 @@ namespace MarketTown.Framework.Behaviors.ShopCategories
             long farmerId = Game1.player.UniqueMultiplayerID;
             data.AssignedChair.sittingFarmers[farmerId] = data.AssignedChairSlotIndex;
 
-            // Snap onto the chair with a Y offset to lower the NPC visually
-            npc.Position = data.ReadingChairTile * 64f + new Vector2(0f, 24f);
-
             // Face direction of chair
             int facingDirection = data.AssignedChair.GetSittingDirection();
             npc.faceDirection(facingDirection);
+
+            // Snap onto the chair with a Y offset to lower the NPC visually
+            Vector2 positionOffset = new Vector2(0f, 24f);
+            if (facingDirection == 1) // right
+            {
+                positionOffset.X += 12f;
+                positionOffset.Y -= 12f;
+            }
+            else if (facingDirection == 3) // left
+            {
+                positionOffset.X -= 12f;
+                positionOffset.Y -= 12f;
+            }
+
+            npc.Position = data.ReadingChairTile * 64f + positionOffset;
 
             // Call CAS API
             ICASApi casApi = _helper.ModRegistry.GetApi<ICASApi>("d5a1lamdtd.CASCreateAStardewie");

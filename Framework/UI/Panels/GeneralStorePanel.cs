@@ -24,27 +24,19 @@ namespace MarketTown.Framework.UI.Panels
         {
             int lineHeight = 35;
 
-            Utility.drawTextWithShadow(b, "Capacity Scores:", Game1.smallFont, new Vector2(x, y), Game1.textColor);
+            b.DrawString(Game1.smallFont, $"Capacity limit: {_capacityScores.MaxCapacity}", new Vector2(x, y), Game1.textColor);
             y += lineHeight;
 
-            DrawKeyValue(b, "Shop Level Score:", $"{_capacityScores.ShopLevelScore * 100:0}% (Max 50%)", x + 20, y);
+            DrawKeyValue(b, "Shop level:", $"{_capacityScores.ShopLevelScore * 100:0}% (Max 50%)", x + 20, y);
             y += lineHeight;
-
-            DrawKeyValue(b, "Selling Nodes Score:", $"{_capacityScores.SellingScore * 100:0}% (Max 30%)", x + 20, y);
+            DrawKeyValue(b, "Stock available:", $"{_capacityScores.SellingScore * 100:0}% (Max 30%)", x + 20, y);
             y += lineHeight;
-
-            DrawKeyValue(b, "Decoration Score:", $"{_capacityScores.DecorationScore * 100:0}% (Max 20%)", x + 20, y);
-            y += lineHeight;
-
-            DrawKeyValue(b, "Max Customers:", _capacityScores.MaxCapacity.ToString(), x + 20, y, Color.DarkBlue);
+            DrawKeyValue(b, "Decoration:", $"{_capacityScores.DecorationScore * 100:0}% (Max 20%)", x + 20, y);
             y += lineHeight + 10;
 
             // General store tip
-            Utility.drawTextWithShadow(b,
-                "General store: sells everything, +10% on all items.",
-                Game1.smallFont,
-                new Vector2(x, y),
-                Color.DimGray);
+            string parsedTip = Game1.parseText("General store: sells everything, +10% on all items.", Game1.smallFont, width);
+            b.DrawString(Game1.smallFont, parsedTip, new Vector2(x, y), Color.DimGray);
         }
 
         public void ReceiveLeftClick(int x, int y) { /* no interactive elements */ }
@@ -55,9 +47,9 @@ namespace MarketTown.Framework.UI.Panels
 
         private static void DrawKeyValue(SpriteBatch b, string key, string value, int x, int y, Color? valueColor = null)
         {
-            Utility.drawTextWithShadow(b, key, Game1.smallFont, new Vector2(x, y), Game1.textColor);
+            b.DrawString(Game1.smallFont, key, new Vector2(x, y), Game1.textColor);
             Vector2 keySize = Game1.smallFont.MeasureString(key);
-            Color vColor = valueColor ?? Game1.textShadowColor;
+            Color vColor = valueColor ?? new Color(60, 60, 60);
             b.DrawString(Game1.smallFont, value, new Vector2(x + keySize.X + 10, y), vColor);
         }
     }

@@ -29,36 +29,33 @@ namespace MarketTown.Framework.UI.Panels
             int lineHeight = 35;
 
             // ── Theme info ────────────────────────────────────────────────────
-            Utility.drawTextWithShadow(b,
-                "Fashion Boutique — +25% on clothing, hats & boots",
-                Game1.smallFont, new Vector2(x, y), new Color(120, 60, 140));
-            y += lineHeight + 5;
+            string parsedThemeInfo = Game1.parseText("Fashion Boutique — +25% on clothing, hats & boots", Game1.smallFont, width);
+            b.DrawString(Game1.smallFont, parsedThemeInfo, new Vector2(x, y), new Color(120, 60, 140));
+            y += (int)Game1.smallFont.MeasureString(parsedThemeInfo).Y + 5;
 
             // ── Fitting Booth count ───────────────────────────────────────────
             Color boothColor = _boothCount > 0 ? new Color(40, 140, 60) : Color.OrangeRed;
             string boothText = _boothCount > 0
                 ? $"Fitting Booths installed: {_boothCount}"
                 : "No Fitting Booths installed! Customers can't try on clothes.";
-            Utility.drawTextWithShadow(b, boothText, Game1.smallFont, new Vector2(x, y), boothColor);
-            y += lineHeight + 10;
+            string parsedBoothText = Game1.parseText(boothText, Game1.smallFont, width);
+            b.DrawString(Game1.smallFont, parsedBoothText, new Vector2(x, y), boothColor);
+            y += (int)Game1.smallFont.MeasureString(parsedBoothText).Y + 10;
 
             // ── Capacity Scores ───────────────────────────────────────────────
-            Utility.drawTextWithShadow(b, "Capacity Scores:", Game1.smallFont, new Vector2(x, y), Game1.textColor);
+            b.DrawString(Game1.smallFont, $"Capacity limit: {_capacityScores.MaxCapacity}", new Vector2(x, y), Game1.textColor);
             y += lineHeight;
 
-            DrawKeyValue(b, "Shop Level Score:", $"{_capacityScores.ShopLevelScore * 100:0}% (Max 50%)", x + 20, y);
+            DrawKeyValue(b, "Shop level:", $"{_capacityScores.ShopLevelScore * 100:0}% (Max 50%)", x + 20, y);
             y += lineHeight;
-            DrawKeyValue(b, "Selling Nodes Score:", $"{_capacityScores.SellingScore * 100:0}% (Max 30%)", x + 20, y);
+            DrawKeyValue(b, "Stock available:", $"{_capacityScores.SellingScore * 100:0}% (Max 30%)", x + 20, y);
             y += lineHeight;
-            DrawKeyValue(b, "Decoration Score:", $"{_capacityScores.DecorationScore * 100:0}% (Max 20%)", x + 20, y);
-            y += lineHeight;
-            DrawKeyValue(b, "Max Customers:", _capacityScores.MaxCapacity.ToString(), x + 20, y, Color.DarkBlue);
+            DrawKeyValue(b, "Decoration:", $"{_capacityScores.DecorationScore * 100:0}% (Max 20%)", x + 20, y);
             y += lineHeight + 10;
 
             // ── Tip ───────────────────────────────────────────────────────────
-            Utility.drawTextWithShadow(b,
-                "Tip: Place mannequins with clothing for customers to buy.",
-                Game1.smallFont, new Vector2(x, y), Color.DimGray);
+            string parsedTip = Game1.parseText("Tip: Place mannequins with clothing for customers to buy.", Game1.smallFont, width);
+            b.DrawString(Game1.smallFont, parsedTip, new Vector2(x, y), Color.DimGray);
         }
 
         public void ReceiveLeftClick(int x, int y) { /* no interactive elements */ }
@@ -68,9 +65,9 @@ namespace MarketTown.Framework.UI.Panels
 
         private static void DrawKeyValue(SpriteBatch b, string key, string value, int x, int y, Color? valueColor = null)
         {
-            Utility.drawTextWithShadow(b, key, Game1.smallFont, new Vector2(x, y), Game1.textColor);
+            b.DrawString(Game1.smallFont, key, new Vector2(x, y), Game1.textColor);
             Vector2 keySize = Game1.smallFont.MeasureString(key);
-            Color vColor = valueColor ?? Game1.textShadowColor;
+            Color vColor = valueColor ?? new Color(60, 60, 60);
             b.DrawString(Game1.smallFont, value, new Vector2(x + keySize.X + 10, y), vColor);
         }
     }

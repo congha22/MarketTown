@@ -289,12 +289,22 @@ namespace MarketTown.Framework.UI
 
                     var parentMenu = this;
                     var pendingList = _tempHiredNpcs.Values.Where(v => !string.IsNullOrEmpty(v)).ToList();
+                    
+                    var pendingFires = new List<string>();
+                    foreach (var checkout in _checkouts)
+                    {
+                        string currentlyHired = _employeeService.GetHiredEmployee(_location, checkout.TileLocation);
+                        if (!string.IsNullOrEmpty(currentlyHired) && !_tempHiredNpcs.Values.Contains(currentlyHired))
+                        {
+                            pendingFires.Add(currentlyHired);
+                        }
+                    }
 
                     Game1.activeClickableMenu = new EmployeeSelectionMenu(_employeeService, _location, kvp.Value, selectedNpc =>
                     {
                         parentMenu._tempHiredNpcs[kvp.Value] = selectedNpc;
                         Game1.activeClickableMenu = parentMenu;
-                    }, pendingList);
+                    }, pendingList, pendingFires);
                     return;
                 }
             }

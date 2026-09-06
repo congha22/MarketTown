@@ -18,18 +18,20 @@ namespace MarketTown.Framework.UI
         private readonly List<NPC> _availableNpcs;
         private readonly Action<string> _onHired;
         private readonly List<string> _pendingHires;
+        private readonly List<string> _pendingFires;
 
         private readonly List<ClickableComponent> _npcButtons = new List<ClickableComponent>();
         private readonly int _buttonsPerPage = 8;
         private int _currentPage = 0;
 
-        public EmployeeSelectionMenu(StoreEmployeeService employeeService, GameLocation location, Vector2 checkoutTile, Action<string> onHired, List<string> pendingHires = null)
+        public EmployeeSelectionMenu(StoreEmployeeService employeeService, GameLocation location, Vector2 checkoutTile, Action<string> onHired, List<string> pendingHires = null, List<string> pendingFires = null)
         {
             _employeeService = employeeService;
             _location = location;
             _checkoutTile = checkoutTile;
             _onHired = onHired;
             _pendingHires = pendingHires ?? new List<string>();
+            _pendingFires = pendingFires ?? new List<string>();
 
             this.width = 600;
             this.height = 600;
@@ -47,7 +49,9 @@ namespace MarketTown.Framework.UI
             _availableNpcs = new List<NPC>();
             foreach (var npc in Utility.getAllCharacters())
             {
-                if (npc.Name.StartsWith("d5a1lamdtd.cas.npc", StringComparison.OrdinalIgnoreCase) && !_employeeService.IsEmployee(npc) && !_pendingHires.Contains(npc.Name))
+                if (npc.Name.StartsWith("d5a1lamdtd.cas.npc", StringComparison.OrdinalIgnoreCase) && 
+                    (!_employeeService.IsEmployee(npc) || _pendingFires.Contains(npc.Name)) && 
+                    !_pendingHires.Contains(npc.Name))
                 {
                     _availableNpcs.Add(npc);
                 }

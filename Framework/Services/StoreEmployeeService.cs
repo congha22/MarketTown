@@ -279,6 +279,37 @@ namespace MarketTown.Framework.Services
         {
             if (!Context.IsWorldReady || !e.IsMultipleOf(30)) return;
 
+            // Auto-fire employees if their checkout register was moved or removed
+            if (e.IsMultipleOf(60))
+            {
+                foreach (var location in _storeTrackingService.ActiveStoreLocations)
+                {
+                    string key = location.NameOrUniqueName;
+                    if (_storeEmployees.TryGetValue(key, out var record))
+                    {
+                        List<Vector2> tilesToRemove = new List<Vector2>();
+                        foreach (var kvp in record.HiredNPCs)
+                        {
+                            var parts = kvp.Key.Split(',');
+                            if (parts.Length == 2 && float.TryParse(parts[0], out float x) && float.TryParse(parts[1], out float y))
+                            {
+                                Vector2 checkoutTile = new Vector2(x, y);
+                                Furniture checkout = location.furniture.FirstOrDefault(f => f.TileLocation == checkoutTile && (f.ItemId == "d5a1lamdtd.MarketTown_CheckoutSmall" || f.ItemId == "d5a1lamdtd.MarketTown_CheckoutLarge"));
+                                if (checkout == null)
+                                {
+                                    tilesToRemove.Add(checkoutTile);
+                                }
+                            }
+                        }
+
+                        foreach (var tile in tilesToRemove)
+                        {
+                            FireEmployee(location, tile);
+                        }
+                    }
+                }
+            }
+
             if (_casApi == null)
             {
                 _casApi = _helper.ModRegistry.GetApi<ICASApi>("d5a1lamdtd.CASCreateAStardewie");

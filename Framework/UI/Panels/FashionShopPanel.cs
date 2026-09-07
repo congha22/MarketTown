@@ -24,7 +24,7 @@ namespace MarketTown.Framework.UI.Panels
             _boothCount = location.furniture.Count(f => f.ItemId == BOOTH_ID);
         }
 
-        public void Draw(SpriteBatch b, int x, int y, int width, int height)
+        public int Draw(SpriteBatch b, int x, int y, int width, int height)
         {
             int lineHeight = 35;
 
@@ -42,6 +42,10 @@ namespace MarketTown.Framework.UI.Panels
             b.DrawString(Game1.smallFont, parsedBoothText, new Vector2(x, y), boothColor);
             y += (int)Game1.smallFont.MeasureString(parsedBoothText).Y + 10;
 
+            // Divider
+            b.Draw(Game1.fadeToBlackRect, new Rectangle(x, y, width, 2), Color.SlateGray * 0.5f);
+            y += 15;
+
             // ── Capacity Scores ───────────────────────────────────────────────
             b.DrawString(Game1.smallFont, $"Capacity limit: {_capacityScores.MaxCapacity}", new Vector2(x, y), Game1.textColor);
             y += lineHeight;
@@ -56,6 +60,7 @@ namespace MarketTown.Framework.UI.Panels
             // ── Tip ───────────────────────────────────────────────────────────
             string parsedTip = Game1.parseText("Tip: Place mannequins with clothing for customers to buy.", Game1.smallFont, width);
             b.DrawString(Game1.smallFont, parsedTip, new Vector2(x, y), Color.DimGray);
+            return y + (int)Game1.smallFont.MeasureString(parsedTip).Y + 10;
         }
 
         public void ReceiveLeftClick(int x, int y) { /* no interactive elements */ }

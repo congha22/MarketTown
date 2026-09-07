@@ -20,8 +20,12 @@ namespace MarketTown.Framework.UI.Panels
             _capacityScores = visitorService.GetStoreScores(location);
         }
 
-        public void Draw(SpriteBatch b, int x, int y, int width, int height)
+        public int Draw(SpriteBatch b, int x, int y, int width, int height)
         {
+            // Divider
+            b.Draw(Game1.fadeToBlackRect, new Rectangle(x, y, width, 2), Color.SlateGray * 0.5f);
+            y += 15;
+
             int lineHeight = 35;
 
             b.DrawString(Game1.smallFont, $"Capacity limit: {_capacityScores.MaxCapacity}", new Vector2(x, y), Game1.textColor);
@@ -37,6 +41,7 @@ namespace MarketTown.Framework.UI.Panels
             // General store tip
             string parsedTip = Game1.parseText("General store: sells everything, +10% on all items.", Game1.smallFont, width);
             b.DrawString(Game1.smallFont, parsedTip, new Vector2(x, y), Color.DimGray);
+            return y + (int)Game1.smallFont.MeasureString(parsedTip).Y + 10;
         }
 
         public void ReceiveLeftClick(int x, int y) { /* no interactive elements */ }

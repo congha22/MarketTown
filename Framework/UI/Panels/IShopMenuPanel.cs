@@ -17,7 +17,8 @@ namespace MarketTown.Framework.UI.Panels
         /// <param name="y">Top edge of the panel's allowed drawing area (screen coords).</param>
         /// <param name="width">Total width of the allowed drawing area.</param>
         /// <param name="height">Total height of the allowed drawing area.</param>
-        void Draw(SpriteBatch b, int x, int y, int width, int height);
+        /// <returns>The bottom-most Y coordinate after drawing is complete.</returns>
+        int Draw(SpriteBatch b, int x, int y, int width, int height);
 
         /// <summary>Handle a left-click inside the panel area.</summary>
         void ReceiveLeftClick(int x, int y);

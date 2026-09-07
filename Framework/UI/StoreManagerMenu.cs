@@ -129,24 +129,26 @@ namespace MarketTown.Framework.UI
 
             // ── Hours arrows (right column) ───────────────────────────────
             int settingsX = this.xPositionOnScreen + 600;
-            int settingsY = this.yPositionOnScreen + 280;
+            int settingsY = this.yPositionOnScreen + 315;
+            int hourOffset = 20;
 
-            _openLeftArrow = new ClickableTextureComponent(new Rectangle(settingsX + 70, settingsY + 50, 44, 48), Game1.mouseCursors, new Rectangle(352, 495, 12, 11), 2.5f);
-            _openRightArrow = new ClickableTextureComponent(new Rectangle(settingsX + 220, settingsY + 50, 44, 48), Game1.mouseCursors, new Rectangle(365, 495, 12, 11), 2.5f);
-            _closeLeftArrow = new ClickableTextureComponent(new Rectangle(settingsX + 70, settingsY + 95, 44, 48), Game1.mouseCursors, new Rectangle(352, 495, 12, 11), 2.5f);
-            _closeRightArrow = new ClickableTextureComponent(new Rectangle(settingsX + 220, settingsY + 95, 44, 48), Game1.mouseCursors, new Rectangle(365, 495, 12, 11), 2.5f);
+            _openLeftArrow = new ClickableTextureComponent(new Rectangle(settingsX + hourOffset + 70, settingsY + 40, 44, 48), Game1.mouseCursors, new Rectangle(352, 495, 12, 11), 2.5f);
+            _openRightArrow = new ClickableTextureComponent(new Rectangle(settingsX + hourOffset + 220, settingsY + 40, 44, 48), Game1.mouseCursors, new Rectangle(365, 495, 12, 11), 2.5f);
+            _closeLeftArrow = new ClickableTextureComponent(new Rectangle(settingsX + hourOffset + 70, settingsY + 75, 44, 48), Game1.mouseCursors, new Rectangle(352, 495, 12, 11), 2.5f);
+            _closeRightArrow = new ClickableTextureComponent(new Rectangle(settingsX + hourOffset + 220, settingsY + 75, 44, 48), Game1.mouseCursors, new Rectangle(365, 495, 12, 11), 2.5f);
 
             // ── Build checkout hire buttons (right column) ────────────────
-            int rightYTracker = settingsY + 160;
+            int rightYTracker = settingsY + 120;
+            int checkoutOffset = 20;
             if (_checkouts.Count > 0)
             {
                 rightYTracker += 35; // "Employees:" label
                 foreach (var checkout in _checkouts)
                 {
-                    var btn = new ClickableComponent(new Rectangle(this.xPositionOnScreen + 820, rightYTracker, 150, 40), "HireBtn");
+                    var btn = new ClickableComponent(new Rectangle(this.xPositionOnScreen + 820 + checkoutOffset, rightYTracker, 150, 40), "HireBtn");
                     _hireButtons[btn] = checkout.TileLocation;
                     _tempHiredNpcs[checkout.TileLocation] = _employeeService.GetHiredEmployee(_location, checkout.TileLocation);
-                    rightYTracker += 60;
+                    rightYTracker += 45;
                 }
             }
 
@@ -159,7 +161,7 @@ namespace MarketTown.Framework.UI
 
             // Panel area starts just below the dropdown row
             _panelX = dropdownX;
-            _panelY = dropdownY + 70;
+            _panelY = dropdownY + 45;
             _panelWidth = 450;
             _panelHeight = this.height - (_panelY - this.yPositionOnScreen) - 60;
 
@@ -206,6 +208,13 @@ namespace MarketTown.Framework.UI
             if (this.okButton != null && this.okButton.containsPoint(x, y))
             {
                 Game1.playSound("bigDeSelect");
+                
+                string originalTheme = _storeStats.ShopTheme ?? "General";
+                if (_tempThemeKey != originalTheme)
+                {
+                    _storeStatsService.ResetStoreProgress(_location);
+                }
+
                 _shopBehaviorService.SetTheme(_location, _tempThemeKey);
                 _storeStatsService.UpdateStoreHours(_location, _tempOpenHour, _tempCloseHour);
 
@@ -383,7 +392,7 @@ namespace MarketTown.Framework.UI
 
             // ── LEFT COLUMN: Theme dropdown + panel ───────────────────────
             int dropdownX = _panelX;
-            int dropdownY = _panelY - 70;
+            int dropdownY = _panelY - 45;
 
             b.DrawString(Game1.smallFont, "Shop Theme:", new Vector2(dropdownX, dropdownY - 35), Game1.textColor);
 
@@ -394,13 +403,19 @@ namespace MarketTown.Framework.UI
             Vector2 nameSize = Game1.smallFont.MeasureString(displayName);
             b.DrawString(Game1.smallFont, displayName, new Vector2(dropdownX + 197 - nameSize.X / 2, dropdownY + 5), Color.DarkSlateBlue);
 
-            // Divider line under dropdown
-            b.Draw(Game1.fadeToBlackRect,
-                new Rectangle(dropdownX, dropdownY + 45, _panelWidth, 2),
-                Color.SlateGray * 0.5f);
-
             // Delegate to theme panel
-            _currentPanel?.Draw(b, _panelX, _panelY, _panelWidth, _panelHeight);
+            int panelBottomY = _panelY;
+            if (_currentPanel != null)
+            {
+                panelBottomY = _currentPanel.Draw(b, _panelX, _panelY, _panelWidth, _panelHeight);
+            }
+
+            string originalTheme = _storeStats.ShopTheme ?? "General";
+            if (_tempThemeKey != originalTheme)
+            {
+                string parsedWarning = Game1.parseText("Warning: Changing theme will reset store progress!", Game1.smallFont, _panelWidth);
+                b.DrawString(Game1.smallFont, parsedWarning, new Vector2(_panelX, panelBottomY + 10), Color.Red);
+            }
 
             // ── RIGHT COLUMN: Store stats summary ─────────────────────────
             int rightX = this.xPositionOnScreen + 600;
@@ -419,35 +434,39 @@ namespace MarketTown.Framework.UI
                 b.Draw(_currentThemeImage, new Rectangle(imgX, imgY, targetSize, targetSize), Color.White);
             }
 
-            DrawKeyValue(b, "Total Visitors:", _storeStats.TotalVisitors.ToString(), rightX, rightY, statsColor);
+            b.DrawString(Game1.smallFont, "Shop progress:", new Vector2(rightX, rightY), Game1.textColor);
             rightY += 35;
-            DrawKeyValue(b, "Items Sold:", _storeStats.TotalSoldItems.ToString(), rightX, rightY, statsColor);
+            DrawKeyValue(b, "Total Visitors:", _storeStats.TotalVisitors.ToString(), rightX + 20, rightY, statsColor);
             rightY += 35;
-            DrawKeyValue(b, "Total Earnings:", $"{_storeStats.TotalEarnings}g", rightX, rightY, statsColor);
+            DrawKeyValue(b, "Items Sold:", _storeStats.TotalSoldItems.ToString(), rightX + 20, rightY, statsColor);
+            rightY += 35;
+            DrawKeyValue(b, "Total Earnings:", $"{_storeStats.TotalEarnings}g", rightX + 20, rightY, statsColor);
             rightY += 50;
 
             // ── RIGHT COLUMN: Hours ───────────────────────────────────────
             int settingsX = this.xPositionOnScreen + 600;
-            int settingsY = this.yPositionOnScreen + 280;
+            int settingsY = this.yPositionOnScreen + 315;
+            int hourOffset = 20;
 
             b.DrawString(Game1.smallFont, "Store Hours:", new Vector2(settingsX, settingsY), Game1.textColor);
 
-            b.DrawString(Game1.smallFont, "Open:", new Vector2(settingsX, settingsY + 45), Game1.textColor);
+            b.DrawString(Game1.smallFont, "Open:", new Vector2(settingsX + hourOffset, settingsY + 35), Game1.textColor);
             _openLeftArrow.draw(b);
             string openTimeStr = Game1.getTimeOfDayString(_tempOpenHour);
             Vector2 openStrSize = Game1.smallFont.MeasureString(openTimeStr);
-            b.DrawString(Game1.smallFont, openTimeStr, new Vector2(settingsX + 160 - openStrSize.X / 2, settingsY + 45), Game1.textColor);
+            b.DrawString(Game1.smallFont, openTimeStr, new Vector2(settingsX + hourOffset + 160 - openStrSize.X / 2, settingsY + 35), Game1.textColor);
             _openRightArrow.draw(b);
 
-            b.DrawString(Game1.smallFont, "Close:", new Vector2(settingsX, settingsY + 90), Game1.textColor);
+            b.DrawString(Game1.smallFont, "Close:", new Vector2(settingsX + hourOffset, settingsY + 70), Game1.textColor);
             _closeLeftArrow.draw(b);
             string closeTimeStr = Game1.getTimeOfDayString(_tempCloseHour);
             Vector2 closeStrSize = Game1.smallFont.MeasureString(closeTimeStr);
-            b.DrawString(Game1.smallFont, closeTimeStr, new Vector2(settingsX + 160 - closeStrSize.X / 2, settingsY + 95), Game1.textColor);
+            b.DrawString(Game1.smallFont, closeTimeStr, new Vector2(settingsX + hourOffset + 160 - closeStrSize.X / 2, settingsY + 70), Game1.textColor);
             _closeRightArrow.draw(b);
 
             // ── RIGHT COLUMN: Employees ───────────────────────────────────
-            int employeesY = settingsY + 160;
+            int employeesY = settingsY + 120;
+            int checkoutOffset = 20;
             if (_checkouts.Count > 0)
             {
                 b.DrawString(Game1.smallFont, "Employees:", new Vector2(rightX, employeesY), Game1.textColor);
@@ -456,7 +475,7 @@ namespace MarketTown.Framework.UI
                 foreach (var checkout in _checkouts)
                 {
                     string type = checkout.ItemId == "d5a1lamdtd.MarketTown_CheckoutSmall" ? "Small" : "Large";
-                    b.DrawString(Game1.smallFont, $"{type} Checkout:", new Vector2(rightX, employeesY), Game1.textColor);
+                    b.DrawString(Game1.smallFont, $"{type} Checkout:", new Vector2(rightX + checkoutOffset, employeesY), Game1.textColor);
 
                     var btn = _hireButtons.FirstOrDefault(kvp => kvp.Value == checkout.TileLocation).Key;
                     if (btn != null)
@@ -488,7 +507,7 @@ namespace MarketTown.Framework.UI
                         b.DrawString(Game1.smallFont, btnText, new Vector2(btn.bounds.X + 25, btn.bounds.Y + 5), Game1.textColor);
                     }
 
-                    employeesY += 60;
+                    employeesY += 45;
                 }
             }
 

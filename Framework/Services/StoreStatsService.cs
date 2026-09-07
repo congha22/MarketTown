@@ -61,6 +61,19 @@ namespace MarketTown.Framework.Services
             record.TotalEarnings += price;
         }
 
+        public void ResetStoreProgress(GameLocation location)
+        {
+            if (location == null) return;
+            string key = location.NameOrUniqueName;
+
+            if (_storeStats.TryGetValue(key, out var record))
+            {
+                record.TotalVisitors = 0;
+                record.TotalSoldItems = 0;
+                record.TotalEarnings = 0;
+            }
+        }
+
         public void UpdateStoreHours(GameLocation location, int openHour, int closeHour)
         {
             if (location == null) return;

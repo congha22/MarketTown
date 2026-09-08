@@ -577,9 +577,19 @@ namespace MarketTown.Framework.Services
 
             foreach (var furniture in location.furniture)
             {
-                if (furniture.furniture_type.Value == StardewValley.Objects.Furniture.table && furniture.heldObject.Value != null)
+                if (furniture.furniture_type.Value == StardewValley.Objects.Furniture.table)
                 {
-                    numSellingNodes++;
+                    if (furniture.heldObject.Value != null)
+                    {
+                        if (NpcScannerService.ValidItemCategories.Contains(furniture.heldObject.Value.Category))
+                        {
+                            numSellingNodes++;
+                        }
+                        else
+                        {
+                            numDecorations++;
+                        }
+                    }
                 }
                 else
                 {

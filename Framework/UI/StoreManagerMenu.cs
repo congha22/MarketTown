@@ -66,6 +66,7 @@ namespace MarketTown.Framework.UI
         private int _tempCloseHour;
         private string _tempThemeKey;
         private Dictionary<Vector2, string> _tempHiredNpcs = new();
+        private string _hoverText = "";
 
         public ClickableTextureComponent okButton;
         public ClickableTextureComponent cancelButton;
@@ -132,10 +133,10 @@ namespace MarketTown.Framework.UI
             int settingsY = this.yPositionOnScreen + 315;
             int hourOffset = 20;
 
-            _openLeftArrow = new ClickableTextureComponent(new Rectangle(settingsX + hourOffset + 70, settingsY + 40, 44, 48), Game1.mouseCursors, new Rectangle(352, 495, 12, 11), 2.5f);
-            _openRightArrow = new ClickableTextureComponent(new Rectangle(settingsX + hourOffset + 220, settingsY + 40, 44, 48), Game1.mouseCursors, new Rectangle(365, 495, 12, 11), 2.5f);
-            _closeLeftArrow = new ClickableTextureComponent(new Rectangle(settingsX + hourOffset + 70, settingsY + 75, 44, 48), Game1.mouseCursors, new Rectangle(352, 495, 12, 11), 2.5f);
-            _closeRightArrow = new ClickableTextureComponent(new Rectangle(settingsX + hourOffset + 220, settingsY + 75, 44, 48), Game1.mouseCursors, new Rectangle(365, 495, 12, 11), 2.5f);
+            _openLeftArrow = new ClickableTextureComponent(new Rectangle(settingsX + hourOffset + 70, settingsY + 40, 30, 28), Game1.mouseCursors, new Rectangle(352, 495, 12, 11), 2.5f);
+            _openRightArrow = new ClickableTextureComponent(new Rectangle(settingsX + hourOffset + 220, settingsY + 40, 30, 28), Game1.mouseCursors, new Rectangle(365, 495, 12, 11), 2.5f);
+            _closeLeftArrow = new ClickableTextureComponent(new Rectangle(settingsX + hourOffset + 70, settingsY + 75, 30, 28), Game1.mouseCursors, new Rectangle(352, 495, 12, 11), 2.5f);
+            _closeRightArrow = new ClickableTextureComponent(new Rectangle(settingsX + hourOffset + 220, settingsY + 75, 30, 28), Game1.mouseCursors, new Rectangle(365, 495, 12, 11), 2.5f);
 
             // ── Build checkout hire buttons (right column) ────────────────
             int rightYTracker = settingsY + 120;
@@ -371,6 +372,24 @@ namespace MarketTown.Framework.UI
             this.okButton?.tryHover(x, y);
             this.cancelButton?.tryHover(x, y);
             _currentPanel?.PerformHoverAction(x, y);
+
+            _hoverText = "";
+            int rightX = this.xPositionOnScreen + 600;
+            int rightY = this.yPositionOnScreen + 160;
+            Rectangle progressArea = new Rectangle(rightX, rightY, 300, 160);
+            if (progressArea.Contains(x, y))
+            {
+                int shopLevel = _storeStats.GetShopLevel();
+                if (shopLevel < 5)
+                {
+                    _storeStats.GetNextLevelRequirements(out int reqVisitors, out int reqItems, out int reqEarnings);
+                    _hoverText = $"Next Level Requirements:\nVisitors: {reqVisitors}\nItems Sold: {reqItems}\nEarnings: {reqEarnings}g";
+                }
+                else
+                {
+                    _hoverText = "Shop is at Maximum Level!";
+                }
+            }
         }
 
         // ── Draw ──────────────────────────────────────────────────────────────
@@ -434,13 +453,42 @@ namespace MarketTown.Framework.UI
                 b.Draw(_currentThemeImage, new Rectangle(imgX, imgY, targetSize, targetSize), Color.White);
             }
 
-            b.DrawString(Game1.smallFont, "Shop progress:", new Vector2(rightX, rightY), Game1.textColor);
+            b.DrawString(Game1.smallFont, "Shop Level:", new Vector2(rightX, rightY), Game1.textColor);
+            
+            // Draw Star Icon
+            int shopLevel = _storeStats.GetShopLevel();
+            Rectangle starRect = new Rectangle(338, 400, 8, 8);
+            Color starColor = Color.White;
+            bool drawStar = true;
+
+            switch (shopLevel)
+            {
+                case 1: drawStar = false; break; // No star
+                case 2: starRect = new Rectangle(338, 400, 8, 8); starColor = Color.Black; break; // Silver tinted Black
+                case 3: starRect = new Rectangle(338, 400, 8, 8); break; // Silver
+                case 4: starRect = new Rectangle(346, 400, 8, 8); break; // Gold
+                case 5: starRect = new Rectangle(346, 392, 8, 8); break; // Iridium
+            }
+
+            if (drawStar)
+            {
+                b.Draw(Game1.mouseCursors, new Vector2(rightX + Game1.smallFont.MeasureString("Shop Level: ").X, rightY - 5), starRect, starColor, 0f, Vector2.Zero, 4f, SpriteEffects.None, 1f);
+            }
+
             rightY += 35;
-            DrawKeyValue(b, "Total Visitors:", _storeStats.TotalVisitors.ToString(), rightX + 20, rightY, statsColor);
+
+            _storeStats.GetNextLevelRequirements(out int reqVisitors, out int reqItems, out int reqEarnings);
+            
+            string visitorText = $"{_storeStats.TotalVisitors}";
+            string itemsText = $"{_storeStats.TotalSoldItems}";
+            string earningsText = $"{_storeStats.TotalEarnings}g";
+
+            int offset = 140;
+            DrawKeyValue(b, "Visitors:", visitorText, rightX + 20, rightY, offset, statsColor);
             rightY += 35;
-            DrawKeyValue(b, "Items Sold:", _storeStats.TotalSoldItems.ToString(), rightX + 20, rightY, statsColor);
+            DrawKeyValue(b, "Items Sold:", itemsText, rightX + 20, rightY, offset, statsColor);
             rightY += 35;
-            DrawKeyValue(b, "Total Earnings:", $"{_storeStats.TotalEarnings}g", rightX + 20, rightY, statsColor);
+            DrawKeyValue(b, "Earnings:", earningsText, rightX + 20, rightY, offset, statsColor);
             rightY += 50;
 
             // ── RIGHT COLUMN: Hours ───────────────────────────────────────
@@ -515,17 +563,23 @@ namespace MarketTown.Framework.UI
             this.okButton?.draw(b);
             this.cancelButton?.draw(b);
             this.upperRightCloseButton?.draw(b);
+            
+            if (!string.IsNullOrEmpty(_hoverText))
+            {
+                IClickableMenu.drawHoverText(b, _hoverText, Game1.smallFont);
+            }
+            
             this.drawMouse(b);
         }
 
         // ── Helpers ───────────────────────────────────────────────────────────
 
-        private static void DrawKeyValue(SpriteBatch b, string key, string value, int x, int y, Color? valueColor = null)
+        private static void DrawKeyValue(SpriteBatch b, string key, string value, int x, int y, int valueOffset = -1, Color? valueColor = null)
         {
             b.DrawString(Game1.smallFont, key, new Vector2(x, y), Game1.textColor);
-            Vector2 keySize = Game1.smallFont.MeasureString(key);
+            float offset = valueOffset > 0 ? valueOffset : Game1.smallFont.MeasureString(key).X + 10;
             Color vColor = valueColor ?? new Color(60, 60, 60);
-            b.DrawString(Game1.smallFont, value, new Vector2(x + keySize.X + 10, y), vColor);
+            b.DrawString(Game1.smallFont, value, new Vector2(x + offset, y), vColor);
         }
     }
 }

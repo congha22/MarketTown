@@ -99,7 +99,46 @@ namespace MarketTown
 
             // Register GMCM
             ModConfigMenu.Register(this.Helper, this.ModManifest, this.Config);
+
+            // Register Cheat Command
+            this.Helper.ConsoleCommands.Add("mt_cheat", "Market Town cheat commands.\nUsage: mt_cheat shop_stat <visitors> <items> <earnings>", this.OnCheatCommand);
         }
+
+        private void OnCheatCommand(string command, string[] args)
+        {
+            if (args.Length == 0)
+            {
+                this.Monitor.Log("Usage: mt_cheat shop_stat <visitors> <items> <earnings>", LogLevel.Error);
+                return;
+            }
+
+            if (args[0].ToLower() == "shop_stat")
+            {
+                if (!Context.IsWorldReady) return;
+                if (Game1.currentLocation == null) return;
+                if (args.Length != 4)
+                {
+                    this.Monitor.Log("Usage: mt_cheat shop_stat <visitors> <items> <earnings>", LogLevel.Error);
+                    return;
+                }
+
+                if (!int.TryParse(args[1], out int visitors) || !int.TryParse(args[2], out int items) || !int.TryParse(args[3], out int earnings))
+                {
+                    this.Monitor.Log("Invalid arguments. Must be integers.", LogLevel.Error);
+                    return;
+                }
+
+                string key = Game1.currentLocation.NameOrUniqueName;
+                _storeStatsService.SetStoreStats(Game1.currentLocation, visitors, items, earnings);
+                this.Monitor.Log($"Set stats for {key}: {visitors} visitors, {items} items sold, {earnings}g earnings.", LogLevel.Info);
+            }
+            else
+            {
+                this.Monitor.Log($"Unknown cheat subcommand: {args[0]}", LogLevel.Error);
+            }
+        }
+
+
 
         private void OnButtonPressed(object sender, ButtonPressedEventArgs e)
         {

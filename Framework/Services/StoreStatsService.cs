@@ -74,6 +74,21 @@ namespace MarketTown.Framework.Services
             }
         }
 
+        public void SetStoreStats(GameLocation location, int visitors, int items, int earnings)
+        {
+            if (location == null) return;
+            string key = location.NameOrUniqueName;
+
+            if (!_storeStats.TryGetValue(key, out var record))
+            {
+                record = new StoreStatRecord();
+                _storeStats[key] = record;
+            }
+            record.TotalVisitors = visitors;
+            record.TotalSoldItems = items;
+            record.TotalEarnings = earnings;
+        }
+
         public void UpdateStoreHours(GameLocation location, int openHour, int closeHour)
         {
             if (location == null) return;

@@ -27,15 +27,27 @@ namespace MarketTown.Framework.UI.Panels
             y += 15;
 
             int lineHeight = 35;
+            int offset = 220;
 
-            b.DrawString(Game1.smallFont, $"Capacity limit: {_capacityScores.MaxCapacity}", new Vector2(x, y), Game1.textColor);
+            int baseCap = _capacityScores.BaseCapacity;
+            string baseCapStr = baseCap < 10 ? $"  {baseCap}" : $"{baseCap}";
+            DrawKeyValue(b, "Base capacity:", baseCapStr, x + 20, y, offset);
             y += lineHeight;
 
-            DrawKeyValue(b, "Shop level:", $"{_capacityScores.ShopLevelScore * 100:0}% (Max 50%)", x + 20, y);
+            int levelContrib = (int)(baseCap * _capacityScores.ShopLevelScore);
+            int maxLevelContrib = (int)(baseCap * 0.5f);
+
+            int sellingContrib = (int)(baseCap * _capacityScores.SellingScore);
+            int maxSellingContrib = (int)(baseCap * 0.75f);
+
+            int decoContrib = (int)(baseCap * _capacityScores.DecorationScore);
+            int maxDecoContrib = (int)(baseCap * 0.25f);
+
+            DrawKeyValue(b, "Shop level:", $"+{levelContrib} (Max +{maxLevelContrib})", x + 20, y, offset);
             y += lineHeight;
-            DrawKeyValue(b, "Stock available:", $"{_capacityScores.SellingScore * 100:0}% (Max 30%)", x + 20, y);
+            DrawKeyValue(b, "Stock available:", $"+{sellingContrib} (Max +{maxSellingContrib})", x + 20, y, offset);
             y += lineHeight;
-            DrawKeyValue(b, "Decoration:", $"{_capacityScores.DecorationScore * 100:0}% (Max 20%)", x + 20, y);
+            DrawKeyValue(b, "Decoration:", $"+{decoContrib} (Max +{maxDecoContrib})", x + 20, y, offset);
             y += lineHeight + 10;
 
             // General store tip
@@ -50,12 +62,12 @@ namespace MarketTown.Framework.UI.Panels
 
         // ── helpers ───────────────────────────────────────────────────────────
 
-        private static void DrawKeyValue(SpriteBatch b, string key, string value, int x, int y, Color? valueColor = null)
+        private static void DrawKeyValue(SpriteBatch b, string key, string value, int x, int y, int valueOffset = -1, Color? valueColor = null)
         {
             b.DrawString(Game1.smallFont, key, new Vector2(x, y), Game1.textColor);
-            Vector2 keySize = Game1.smallFont.MeasureString(key);
+            float offset = valueOffset > 0 ? valueOffset : Game1.smallFont.MeasureString(key).X + 10;
             Color vColor = valueColor ?? new Color(60, 60, 60);
-            b.DrawString(Game1.smallFont, value, new Vector2(x + keySize.X + 10, y), vColor);
+            b.DrawString(Game1.smallFont, value, new Vector2(x + offset, y), vColor);
         }
     }
 }

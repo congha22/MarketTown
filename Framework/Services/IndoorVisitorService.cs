@@ -497,7 +497,10 @@ namespace MarketTown.Framework.Services
 
         private int GetShopLevel(GameLocation location)
         {
-            // Placeholder: currently returning 1. In the future, this can pull from a custom save data or tracking service.
+            if (location != null && _storeStatsService.StoreStats.TryGetValue(location.NameOrUniqueName, out var stats))
+            {
+                return stats.GetShopLevel();
+            }
             return 1;
         }
 
@@ -526,8 +529,9 @@ namespace MarketTown.Framework.Services
 
             int area = location.Map.Layers[0].LayerWidth * location.Map.Layers[0].LayerHeight;
 
-            // Base Capacity
+            // Base Capacity (Max 12)
             int baseCapacity = Math.Max(1, area / 70);
+            baseCapacity = Math.Min(12, baseCapacity);
 
             var stats = GetStoreStatistics(location);
             int numSellingNodes = stats.SellingNodes;
@@ -540,15 +544,14 @@ namespace MarketTown.Framework.Services
             float decoRatio = Math.Min(1.0f, (numDecorations * 20.0f) / area);
 
             float levelScore = levelRatio * 0.5f;
-            float sellingScore = nodeRatio * 0.3f;
-            float decorationScore = decoRatio * 0.2f;
+            float sellingScore = nodeRatio * 0.75f;
+            float decorationScore = decoRatio * 0.25f;
 
-            // Bonus Score (0.0 to 1.0)
+            // Bonus Score (0.0 to 1.5)
             float bonusScore = levelScore + sellingScore + decorationScore;
 
             // Calculate final limit
             int maxLimit = baseCapacity + (int)(baseCapacity * bonusScore);
-            maxLimit = Math.Min(20, maxLimit);
 
             var result = new StoreCapacityScores
             {
@@ -557,6 +560,7 @@ namespace MarketTown.Framework.Services
                 SellingScore = sellingScore,
                 DecorationScore = decorationScore,
                 BonusScore = bonusScore,
+                BaseCapacity = baseCapacity,
                 MaxCapacity = maxLimit
             };
 

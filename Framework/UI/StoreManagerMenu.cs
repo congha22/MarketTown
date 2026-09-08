@@ -390,6 +390,10 @@ namespace MarketTown.Framework.UI
                     _hoverText = "Shop is at Maximum Level!";
                 }
             }
+            else if (_currentPanel != null && !string.IsNullOrEmpty(_currentPanel.HoverText))
+            {
+                _hoverText = _currentPanel.HoverText;
+            }
         }
 
         // ── Draw ──────────────────────────────────────────────────────────────

@@ -15,6 +15,8 @@ namespace MarketTown.Framework.UI.Panels
     {
         private readonly StoreCapacityScores _capacityScores;
         private readonly int _seatCount;
+        public string HoverText { get; private set; }
+        private Rectangle _capacityArea;
 
         public DiscoveryShopPanel(GameLocation location, StoreStatsService statsService, IndoorVisitorService visitorService)
         {
@@ -46,6 +48,7 @@ namespace MarketTown.Framework.UI.Panels
             y += 15;
 
             // ── Capacity Scores ───────────────────────────────────────────────
+            int capacityStartY = y;
             int offset = 220;
 
             int baseCap = _capacityScores.BaseCapacity;
@@ -69,6 +72,8 @@ namespace MarketTown.Framework.UI.Panels
             DrawKeyValue(b, "Decoration:", $"+{decoContrib} (Max +{maxDecoContrib})", x + 20, y, offset);
             y += lineHeight + 10;
 
+            _capacityArea = new Rectangle(x, capacityStartY, width, y - capacityStartY);
+
             // ── Tip ───────────────────────────────────────────────────────────
             string parsedTip = Game1.parseText("Tip: Make sure chairs have an open tile next to them for customers to path to.", Game1.smallFont, width);
             b.DrawString(Game1.smallFont, parsedTip, new Vector2(x, y), Color.DimGray);
@@ -76,7 +81,17 @@ namespace MarketTown.Framework.UI.Panels
         }
 
         public void ReceiveLeftClick(int x, int y) { /* no interactive elements */ }
-        public void PerformHoverAction(int x, int y) { /* no tooltips */ }
+        public void PerformHoverAction(int x, int y)
+        {
+            if (_capacityArea.Contains(x, y))
+            {
+                HoverText = "Base capacity depends on how large the shop is, capped at 12.\nIncrease shop capacity by progressing shop level, selling more items, and well-decorating the shop.";
+            }
+            else
+            {
+                HoverText = null;
+            }
+        }
 
         // ── Helpers ───────────────────────────────────────────────────────────
 

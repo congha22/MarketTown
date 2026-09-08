@@ -25,5 +25,8 @@ namespace MarketTown.Framework.UI.Panels
 
         /// <summary>Handle mouse hover so the panel can show tooltips etc.</summary>
         void PerformHoverAction(int x, int y);
+
+        /// <summary>The tooltip text to display if the mouse is hovering over an element in this panel.</summary>
+        string HoverText { get; }
     }
 }

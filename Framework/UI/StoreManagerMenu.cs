@@ -54,6 +54,8 @@ namespace MarketTown.Framework.UI
         // ── Active panel ──────────────────────────────────────────────────────
         private IShopMenuPanel _currentPanel;
         private Texture2D _currentThemeImage;
+        private Texture2D _managerBg;
+        private Texture2D _photoFrameBg;
 
         // Panel drawing area (left column, below dropdown)
         private int _panelX;
@@ -93,11 +95,6 @@ namespace MarketTown.Framework.UI
             this.xPositionOnScreen = Game1.uiViewport.Width / 2 - this.width / 2;
             this.yPositionOnScreen = Game1.uiViewport.Height / 2 - this.height / 2;
 
-            this.upperRightCloseButton = new ClickableTextureComponent(
-                new Rectangle(this.xPositionOnScreen + this.width - 36, this.yPositionOnScreen - 8, 48, 48),
-                Game1.mouseCursors,
-                new Rectangle(337, 494, 12, 12), 4f);
-
             this.okButton = new ClickableTextureComponent(
                 new Rectangle(this.xPositionOnScreen + this.width - 160, this.yPositionOnScreen + this.height - 100, 64, 64),
                 Game1.mouseCursors,
@@ -117,6 +114,13 @@ namespace MarketTown.Framework.UI
             _tempCloseHour = _storeStats.CloseHour;
             _tempThemeKey = _storeStats.ShopTheme ?? "General";
 
+            try
+            {
+                _managerBg = _helper.ModContent.Load<Texture2D>("assets/manager_bg.png");
+                _photoFrameBg = _helper.ModContent.Load<Texture2D>("assets/photo_frame.png");
+            }
+            catch { }
+
             // ── Build theme list from registry ────────────────────────────
             _themeKeys = _shopBehaviorService.AllBehaviors.Keys.OrderBy(k => k).ToList();
             _themeNames = _themeKeys.Select(k => _shopBehaviorService.AllBehaviors[k].DisplayName).ToList();
@@ -129,7 +133,7 @@ namespace MarketTown.Framework.UI
                 .ToList();
 
             // ── Hours arrows (right column) ───────────────────────────────
-            int settingsX = this.xPositionOnScreen + 600;
+            int settingsX = this.xPositionOnScreen + 650;
             int settingsY = this.yPositionOnScreen + 315;
             int hourOffset = 20;
 
@@ -146,7 +150,7 @@ namespace MarketTown.Framework.UI
                 rightYTracker += 35; // "Employees:" label
                 foreach (var checkout in _checkouts)
                 {
-                    var btn = new ClickableComponent(new Rectangle(this.xPositionOnScreen + 820 + checkoutOffset, rightYTracker, 150, 40), "HireBtn");
+                    var btn = new ClickableComponent(new Rectangle(this.xPositionOnScreen + 870 + checkoutOffset, rightYTracker, 150, 40), "HireBtn");
                     _hireButtons[btn] = checkout.TileLocation;
                     _tempHiredNpcs[checkout.TileLocation] = _employeeService.GetHiredEmployee(_location, checkout.TileLocation);
                     rightYTracker += 45;
@@ -154,7 +158,7 @@ namespace MarketTown.Framework.UI
             }
 
             // ── Theme arrows (left column) ────────────────────────────────
-            int dropdownX = this.xPositionOnScreen + 60;
+            int dropdownX = this.xPositionOnScreen + 150;
             int dropdownY = this.yPositionOnScreen + 190;
 
             _themeLeftArrow = new ClickableTextureComponent(new Rectangle(dropdownX, dropdownY, 44, 48), Game1.mouseCursors, new Rectangle(352, 495, 12, 11), 4f);
@@ -200,16 +204,10 @@ namespace MarketTown.Framework.UI
 
             bool isStoreOpen = Game1.timeOfDay >= _storeStats.OpenHour && Game1.timeOfDay < _storeStats.CloseHour;
 
-            if (this.upperRightCloseButton != null && this.upperRightCloseButton.containsPoint(x, y))
-            {
-                this.exitThisMenu(playSound);
-                return;
-            }
-
             if (this.okButton != null && this.okButton.containsPoint(x, y))
             {
                 Game1.playSound("bigDeSelect");
-                
+
                 string originalTheme = _storeStats.ShopTheme ?? "General";
                 if (_tempThemeKey != originalTheme)
                 {
@@ -299,7 +297,7 @@ namespace MarketTown.Framework.UI
 
                     var parentMenu = this;
                     var pendingList = _tempHiredNpcs.Values.Where(v => !string.IsNullOrEmpty(v)).ToList();
-                    
+
                     var pendingFires = new List<string>();
                     foreach (var checkout in _checkouts)
                     {
@@ -368,13 +366,12 @@ namespace MarketTown.Framework.UI
         public override void performHoverAction(int x, int y)
         {
             base.performHoverAction(x, y);
-            this.upperRightCloseButton?.tryHover(x, y);
             this.okButton?.tryHover(x, y);
             this.cancelButton?.tryHover(x, y);
             _currentPanel?.PerformHoverAction(x, y);
 
             _hoverText = "";
-            int rightX = this.xPositionOnScreen + 600;
+            int rightX = this.xPositionOnScreen + 650;
             int rightY = this.yPositionOnScreen + 160;
             Rectangle progressArea = new Rectangle(rightX, rightY, 300, 160);
             if (progressArea.Contains(x, y))
@@ -404,7 +401,14 @@ namespace MarketTown.Framework.UI
             b.Draw(Game1.fadeToBlackRect, Game1.graphics.GraphicsDevice.Viewport.Bounds, Color.Black * 0.4f);
 
             // Main window
-            Game1.drawDialogueBox(this.xPositionOnScreen, this.yPositionOnScreen, this.width, this.height, false, true);
+            if (_managerBg != null)
+            {
+                b.Draw(_managerBg, new Rectangle(this.xPositionOnScreen, this.yPositionOnScreen, this.width, this.height), Color.White);
+            }
+            else
+            {
+                Game1.drawDialogueBox(this.xPositionOnScreen, this.yPositionOnScreen, this.width, this.height, false, true);
+            }
 
             // ── Title ─────────────────────────────────────────────────────
             string title = $"Store Manager - {_location.Name}";
@@ -441,24 +445,33 @@ namespace MarketTown.Framework.UI
             }
 
             // ── RIGHT COLUMN: Store stats summary ─────────────────────────
-            int rightX = this.xPositionOnScreen + 600;
+            int rightX = this.xPositionOnScreen + 650;
             int rightY = this.yPositionOnScreen + 160;
             Color statsColor = new Color(20, 140, 40);
 
             // Draw example image
             if (_currentThemeImage != null)
             {
-                int targetSize = 300;
-                int imgX = rightX + 318;
-                int imgY = this.yPositionOnScreen + 100;
+                int targetSize = 290;
+                int imgX = this.xPositionOnScreen + this.width - 90;
+                int imgY = this.yPositionOnScreen + 180;
+                float rotation = (float)(7 * Math.PI / 180);
 
-                // Draw standard menu frame behind the image (no shadow)
-                IClickableMenu.drawTextureBox(b, Game1.menuTexture, new Rectangle(0, 256, 60, 60), imgX - 16, imgY - 16, targetSize + 32, targetSize + 32, Color.White * 0.8f, 1f, false);
-                b.Draw(_currentThemeImage, new Rectangle(imgX, imgY, targetSize, targetSize), Color.White);
+                if (_photoFrameBg != null)
+                {
+                    // Frame's inner photo is 64x64, starting at 6,6. Center is at 38,38.
+                    float frameScale = targetSize / 64f;
+                    Vector2 originBg = new Vector2(38f, 38f);
+                    b.Draw(_photoFrameBg, new Vector2(imgX, imgY), null, Color.White, rotation, originBg, frameScale, SpriteEffects.None, 0f);
+                }
+
+                Vector2 originImg = new Vector2(_currentThemeImage.Width / 2f, _currentThemeImage.Height / 2f);
+                Vector2 imgScale = new Vector2(targetSize / (float)_currentThemeImage.Width, targetSize / (float)_currentThemeImage.Height);
+                b.Draw(_currentThemeImage, new Vector2(imgX, imgY), null, Color.White, rotation, originImg, imgScale, SpriteEffects.None, 0f);
             }
 
             b.DrawString(Game1.smallFont, "Shop Level:", new Vector2(rightX, rightY), Game1.textColor);
-            
+
             // Draw Star Icon
             int shopLevel = _storeStats.GetShopLevel();
             Rectangle starRect = new Rectangle(338, 400, 8, 8);
@@ -482,7 +495,7 @@ namespace MarketTown.Framework.UI
             rightY += 35;
 
             _storeStats.GetNextLevelRequirements(out int reqVisitors, out int reqItems, out int reqEarnings);
-            
+
             string visitorText = $"{_storeStats.TotalVisitors}";
             string itemsText = $"{_storeStats.TotalSoldItems}";
             string earningsText = $"{_storeStats.TotalEarnings}g";
@@ -496,7 +509,7 @@ namespace MarketTown.Framework.UI
             rightY += 50;
 
             // ── RIGHT COLUMN: Hours ───────────────────────────────────────
-            int settingsX = this.xPositionOnScreen + 600;
+            int settingsX = this.xPositionOnScreen + 650;
             int settingsY = this.yPositionOnScreen + 315;
             int hourOffset = 20;
 
@@ -566,13 +579,12 @@ namespace MarketTown.Framework.UI
             // ── Overlay elements ──────────────────────────────────────────
             this.okButton?.draw(b);
             this.cancelButton?.draw(b);
-            this.upperRightCloseButton?.draw(b);
-            
+
             if (!string.IsNullOrEmpty(_hoverText))
             {
                 IClickableMenu.drawHoverText(b, _hoverText, Game1.smallFont);
             }
-            
+
             this.drawMouse(b);
         }
 

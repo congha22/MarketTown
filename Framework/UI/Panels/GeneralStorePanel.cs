@@ -68,7 +68,7 @@ namespace MarketTown.Framework.UI.Panels
         {
             if (_capacityArea.Contains(x, y))
             {
-                HoverText = "Base capacity depends on how large the shop is, capped at 12.\nIncrease shop capacity by progressing shop level, selling more items, and well-decorating the shop.";
+                HoverText = "Base capacity depends on how large the shop is, capped at 12.\nIncrease capacity by progressing, selling more, and well-decorating the shop.";
             }
             else
             {
